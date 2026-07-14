@@ -5,6 +5,7 @@ import Canvas3D from './components/Canvas3D';
 import TerminalConsole from './components/TerminalConsole';
 import FixCards from './components/FixCards';
 import NotificationToast from './components/NotificationToast';
+import confetti from 'canvas-confetti';
 
 const BACKEND_URL = 'http://localhost:5000';
 
@@ -17,6 +18,7 @@ export default function App() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [fixes, setFixes] = useState([]);
+  const [cacheHit, setCacheHit] = useState(false);
   
   // Loading maps
   const [isTailoringMap, setIsTailoringMap] = useState({});
@@ -27,10 +29,8 @@ export default function App() {
     setSocket(newSocket);
 
     newSocket.on('notification', (notif) => {
-      // Add notification to stack
-      setNotifications((prev) => [notif, ...prev].slice(0, 4)); // cap at 4 toasts
+      setNotifications((prev) => [notif, ...prev].slice(0, 4));
       
-      // Auto dismiss after 6 seconds
       setTimeout(() => {
         setNotifications((prev) => prev.filter((n) => n.id !== notif.id));
       }, 6000);
@@ -43,6 +43,7 @@ export default function App() {
   const handleDiagnose = async (errorText) => {
     setIsScanning(true);
     setIsSuccess(false);
+    setCacheHit(false);
 
     try {
       const response = await fetch(`${BACKEND_URL}/api/diagnose`, {
@@ -57,13 +58,29 @@ export default function App() {
 
       const data = await response.json();
 
-      // Delay showing results slightly so that user can experience the scanning terminal log animation!
-      setTimeout(() => {
+      // If it is a cache hit, make the resolution instant! Otherwise, simulate visual scanning logs.
+      if (data.cacheHit) {
         setFixes(data.fixes);
+        setCacheHit(true);
         setIsScanning(false);
         setIsSuccess(true);
         setShowResults(true);
-      }, 2500); // 2.5 seconds scanning simulation
+        
+        // Instant micro confetti for cache hit
+        confetti({
+          particleCount: 30,
+          spread: 30,
+          origin: { y: 0.8 },
+          colors: ['#06b6d4', '#0891b2']
+        });
+      } else {
+        setTimeout(() => {
+          setFixes(data.fixes);
+          setIsScanning(false);
+          setIsSuccess(true);
+          setShowResults(true);
+        }, 2500); // 2.5 seconds scanning simulation
+      }
 
     } catch (err) {
       console.error(err);
@@ -72,7 +89,7 @@ export default function App() {
     }
   };
 
-  // API Call: Vote on Fix
+  // API Call: Vote on Fix (with IP Audit validation checks)
   const handleVote = async (fixId, type) => {
     try {
       const response = await fetch(`${BACKEND_URL}/api/fixes/${fixId}/vote`, {
@@ -80,6 +97,21 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type }),
       });
+
+      // Handle double-voting warning
+      if (response.status === 400) {
+        const errorData = await response.json();
+        
+        // Show glowing warning toast
+        const warnNotif = {
+          id: Math.random().toString(),
+          message: `Double Vote Blocked: You have already submitted a vote for this patch.`,
+          type: 'diagnose', // pink/rose border for warning
+          timestamp: new Date().toLocaleTimeString()
+        };
+        setNotifications((prev) => [warnNotif, ...prev].slice(0, 4));
+        return;
+      }
 
       if (!response.ok) throw new Error('Vote failed');
 
@@ -89,6 +121,16 @@ export default function App() {
       setFixes((prev) =>
         prev.map((f) => (f.id === fixId ? { ...f, ...updatedFix } : f))
       );
+
+      // Trigger success confetti
+      if (type === 'up') {
+        confetti({
+          particleCount: 50,
+          spread: 40,
+          origin: { y: 0.8 },
+          colors: ['#a855f7', '#06b6d4', '#10b981']
+        });
+      }
     } catch (err) {
       console.error(err);
     }
@@ -122,6 +164,7 @@ export default function App() {
   const handleReset = () => {
     setShowResults(false);
     setIsSuccess(false);
+    setCacheHit(false);
     setFixes([]);
   };
 
@@ -148,7 +191,7 @@ export default function App() {
             {/* Server Status Indicator */}
             <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-md shadow-emerald-500/50" />
-              <span className="text-2xs text-gray-300">CORE SYSTEM ONLINE</span>
+              <span className="text-2xs text-gray-300">COMMAND NET ACTIVE</span>
             </div>
             
             <a 
@@ -165,7 +208,7 @@ export default function App() {
         {/* Page Content Container */}
         <main className="flex-1 flex flex-col items-center justify-start px-6 pt-10 pb-16 space-y-12">
           
-          {/* Header Title Section (hidden or minimized when results show up) */}
+          {/* Header Title Section */}
           {!showResults && (
             <div className="text-center max-w-2xl space-y-4 pt-4 animate-fadeIn">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 font-mono text-2xs mb-2">
@@ -196,6 +239,7 @@ export default function App() {
                 onVote={handleVote}
                 onTailorFix={handleTailorFix}
                 isTailoringMap={isTailoringMap}
+                cacheHit={cacheHit}
               />
             </div>
           )}

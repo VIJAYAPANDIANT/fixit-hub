@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ThumbsUp, ThumbsDown, Sliders, Check, Copy, Flame, HelpCircle, Loader2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Sliders, Check, Copy, Flame, HelpCircle, Loader2, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 function DiffViewer({ diffText }) {
@@ -31,15 +31,13 @@ function DiffViewer({ diffText }) {
   );
 }
 
-export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap }) {
+export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap, cacheHit }) {
   const [copiedId, setCopiedId] = useState(null);
   const [tailorInputText, setTailorInputText] = useState({});
   const [tailoredFixes, setTailoredFixes] = useState({});
   const [activeTailorId, setActiveTailorId] = useState(null);
 
   const handleCopy = (id, text) => {
-    // Strip diff markers for copying clean code, or copy the diff
-    // Let's copy the entire diff block
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -47,15 +45,6 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap })
 
   const handleVoteSubmit = (id, type) => {
     onVote(id, type);
-    if (type === 'up') {
-      // Trigger small confetti blast
-      confetti({
-        particleCount: 50,
-        spread: 40,
-        origin: { y: 0.8 },
-        colors: ['#a855f7', '#06b6d4', '#10b981']
-      });
-    }
   };
 
   const handleTailorSubmit = async (id, originalFix) => {
@@ -95,23 +84,59 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap })
     setActiveTailorId(activeTailorId === id ? null : id);
   };
 
+  // Sort by upvotes (high to low)
   const sortedFixes = [...fixes].sort((a, b) => b.upvotes - a.upvotes);
+
+  const getSourceBadgeColor = (source) => {
+    switch (source) {
+      case 'ai':
+        return 'bg-purple-500/10 border-purple-500/30 text-purple-400';
+      case 'community':
+        return 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400';
+      case 'external':
+        return 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400';
+      default:
+        return 'bg-white/5 border-white/10 text-gray-400';
+    }
+  };
 
   return (
     <div className="w-full max-w-4xl space-y-6 select-none pb-20">
+      
+      {/* Caching Instant Match Banner */}
+      {cacheHit && (
+        <div className="glass-panel neon-border-cyan/30 rounded-xl p-4 flex items-center justify-between animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+              <Sparkles size={16} />
+            </div>
+            <div>
+              <div className="text-sm font-mono font-bold text-white uppercase tracking-wider">
+                System Cache Hit
+              </div>
+              <div className="text-xs text-gray-400 font-sans">
+                Found matching error footprint footprint_hash. Bypassed diagnosis scanner queue in 0.04ms.
+              </div>
+            </div>
+          </div>
+          <span className="text-2xs font-mono text-cyan-400 neon-text-cyan font-bold">
+            INSTANT MATCHED
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
         <h2 className="text-xl font-mono font-bold text-white flex items-center gap-2">
           <Flame className="text-amber-500 animate-pulse" size={20} />
-          <span>DIAGNOSTIC REPORT: {fixes.length} FIX SOLUTIONS</span>
+          <span>DIAGNOSTIC REPORT: {fixes.length} SOLUTIONS</span>
         </h2>
         <div className="text-xs font-mono text-gray-400">
-          Ranked by community efficiency & AI reliability
+          Ranked by confidence score
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
         {sortedFixes.map((fix) => {
-          // Check if this fix has been tailored
           const isTailored = !!tailoredFixes[fix.id];
           const displayFix = tailoredFixes[fix.id] || fix;
           const isTailoring = !!isTailoringMap[fix.id];
@@ -127,12 +152,12 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap })
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 bg-black/30 border-b border-white/5 gap-3">
                 <div className="space-y-1">
                   <div className="flex flex-wrap gap-2 items-center">
-                    <span className="px-2.5 py-0.5 text-2xs font-mono font-bold bg-purple-500/10 border border-purple-500/20 text-purple-300 rounded uppercase">
-                      SOLUTION
+                    <span className={`px-2.5 py-0.5 text-2xs font-mono font-bold border rounded uppercase ${getSourceBadgeColor(displayFix.source_type || 'ai')}`}>
+                      {displayFix.source_type || 'ai'} source
                     </span>
                     {isTailored && (
                       <span className="px-2.5 py-0.5 text-2xs font-mono font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded uppercase animate-pulse">
-                        TAILORED BY AI
+                        TAILORED
                       </span>
                     )}
                   </div>
@@ -140,13 +165,12 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap })
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {/* AI Confidence Badge */}
                   <div className="flex flex-col items-end">
                     <div className="text-2xs font-mono text-gray-500">AI CONFIDENCE</div>
                     <div className={`text-sm font-mono font-bold ${
-                      displayFix.ai_confidence >= 90 ? 'text-emerald-400 neon-text-green' : 'text-cyan-400 neon-text-cyan'
+                      (displayFix.confidence_score || displayFix.ai_confidence) >= 90 ? 'text-emerald-400 neon-text-green' : 'text-cyan-400 neon-text-cyan'
                     }`}>
-                      {displayFix.ai_confidence}%
+                      {displayFix.confidence_score || displayFix.ai_confidence || 90}%
                     </div>
                   </div>
                 </div>
@@ -161,7 +185,7 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap })
                   <div className="flex justify-between items-center text-2xs font-mono text-gray-500">
                     <span>CODE PATCH RECOMMENDATION</span>
                     <button
-                      onClick={() => handleCopy(fix.id, displayFix.code_diff)}
+                      onClick={() => handleCopy(fix.id, displayFix.code_snippet || displayFix.code_diff)}
                       className="flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors py-1 px-2 hover:bg-white/5 rounded cursor-pointer"
                     >
                       {copiedId === fix.id ? (
@@ -177,7 +201,7 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap })
                       )}
                     </button>
                   </div>
-                  <DiffViewer diffText={displayFix.code_diff} />
+                  <DiffViewer diffText={displayFix.code_snippet || displayFix.code_diff} />
                 </div>
               </div>
 
