@@ -6,6 +6,9 @@ import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import pool, { initDb } from './db.js';
+import cache from './cache.js';
+import { queryExternalSources } from './externalApis.js';
+import { rateLimitMiddleware } from './rateLimiter.js';
 
 dotenv.config();
 
@@ -26,6 +29,19 @@ function hashString(str) {
   return crypto.createHash('sha256').update(str).digest('hex');
 }
 
+// Scrubber for PII (GDPR compliance)
+function scrubPII(errorText) {
+  return errorText
+    // Windows file paths: C:\Users\username\... -> C:\Users\[redacted]\...
+    .replace(/[a-zA-Z]:\\Users\\[a-zA-Z0-9_\-\.]+(?=\\)/gi, 'C:\\Users\\[redacted]')
+    // Unix file paths: /home/username/... -> /home/[redacted]/...
+    .replace(/\/home\/[a-zA-Z0-9_\-\.]+(?=\/)/gi, '/home/[redacted]')
+    // Email addresses
+    .replace(/[\w\.-]+@[\w\.-]+\.\w+/gi, '[email-redacted]')
+    // IP addresses
+    .replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, '[ip-redacted]');
+}
+
 // Redact / Normalize stack trace for caching
 function normalizeError(errorText) {
   return errorText
@@ -38,251 +54,160 @@ function normalizeError(errorText) {
     .trim();
 }
 
-// List of mock error diagnoses for fallback
-const STATIC_DIAGNOSES = [
-  {
-    keywords: ['hooks', 'rendered fewer hooks', 'hook order', 'react hook'],
-    language: 'JavaScript',
-    framework: 'React',
-    fixes: [
-      {
-        title: 'Move Hook outside conditional statement',
-        description: 'React Hooks must be called at the very top level of your component. Moving this Hook outside of any conditional statement or early return ensures it executes in the same order on every render.',
-        code_snippet: `@@ -1,9 +1,9 @@
- function UserProfile({ userId }) {
--  if (!userId) {
--    return <div>No User ID</div>;
--  }
--
-   useEffect(() => {
-     fetchUserData(userId);
-   }, [userId]);
-+
-+  if (!userId) {
-+    return <div>No User ID</div>;
-+  }`,
-        ai_confidence: 98,
-        source_type: 'ai'
-      },
-      {
-        title: 'Use conditional logic inside the Hook',
-        description: 'Instead of making the Hook execution conditional, call the Hook unconditionally and place the conditional checks inside the effect callback or check variables in the dependency array.',
-        code_snippet: `@@ -1,6 +1,8 @@
-   useEffect(() => {
-+    if (!userId) return;
-+    
-     fetchUserData(userId);
--  }, [userId]);
-+  }, [userId]);`,
-        ai_confidence: 91,
-        source_type: 'community'
-      }
-    ]
-  },
-  {
-    keywords: ['nullpointerexception', 'npe', 'null pointer'],
-    language: 'Java',
-    framework: 'Spring Boot',
-    fixes: [
-      {
-        title: 'Add defensive null validation',
-        description: 'Perform an explicit check for null on the object or its nested properties before performing actions or invoking methods.',
-        code_snippet: `@@ -1,3 +1,6 @@
- public String getUserEmail(User user) {
--    return user.getEmail().toLowerCase();
-+    if (user == null || user.getEmail() == null) {
-+        return "";
-+    }
-+    return user.getEmail().toLowerCase();
- }`,
-        ai_confidence: 94,
-        source_type: 'ai'
-      },
-      {
-        title: 'Wrap in java.util.Optional',
-        description: 'Use the Optional class to safely handle potential null values, providing a clean functional API with defaults.',
-        code_snippet: `@@ -1,3 +1,3 @@
- public String getUserEmail(User user) {
--    return user.getEmail().toLowerCase();
-+    return Optional.ofNullable(user).map(User::getEmail).map(String::toLowerCase).orElse("");
- }`,
-        ai_confidence: 88,
-        source_type: 'external'
-      }
-    ]
-  },
-  {
-    keywords: ['keyerror', 'dict key', 'dictionary key'],
-    language: 'Python',
-    framework: 'Django / Flask',
-    fixes: [
-      {
-        title: 'Use dictionary .get() method',
-        description: 'Accessing keys directly raises a KeyError when the key is missing. Using dict.get() returns a default value (None by default) instead of throwing an exception.',
-        code_snippet: `@@ -1,3 +1,3 @@
- def process_request(data):
--    username = data['username']
-+    username = data.get('username', 'Anonymous')
-     return f"Hello, {username}"`,
-        ai_confidence: 96,
-        source_type: 'ai'
-      },
-      {
-        title: 'Validate key existence explicitly',
-        description: 'Check if the key is present in the dictionary prior to retrieval to control custom fallback flow.',
-        code_snippet: `@@ -1,3 +1,5 @@
- def process_request(data):
--    username = data['username']
-+    username = 'Anonymous'
-+    if 'username' in data:
-+        username = data['username']`,
-        ai_confidence: 85,
-        source_type: 'community'
-      }
-    ]
-  },
-  {
-    keywords: ['cannot read properties of undefined', 'is not a function', 'null reading', 'undefined reading'],
-    language: 'JavaScript',
-    framework: 'Node.js / Next.js',
-    fixes: [
-      {
-        title: 'Implement optional chaining (?.)',
-        description: 'Optional chaining safely returns undefined if the property path is broken, preventing application crashes.',
-        code_snippet: `@@ -1,3 +1,3 @@
- const renderUser = (user) => {
--  return <div>{user.profile.details.bio}</div>;
-+  return <div>{user?.profile?.details?.bio ?? 'No biography'}</div>;
- };`,
-        ai_confidence: 97,
-        source_type: 'ai'
-      },
-      {
-        title: 'Define default values in destructuring',
-        description: 'Provide sensible default values during variable extraction to protect downstream components.',
-        code_snippet: `@@ -1,2 +1,2 @@
--const { profile } = user;
-+const { profile = { details: {} } } = user || {};
-+const bio = profile.details.bio || 'No biography';`,
-        ai_confidence: 89,
-        source_type: 'ai'
-      }
-    ]
-  }
-];
-
-// Helper to match errors to solutions
-function matchError(errorText) {
+// Language classifier
+function detectLanguageAndFramework(errorText) {
   const normalized = errorText.toLowerCase();
-  for (const diagnosis of STATIC_DIAGNOSES) {
-    if (diagnosis.keywords.some(keyword => normalized.includes(keyword))) {
-      return diagnosis;
-    }
+  
+  if (normalized.includes('hooks') || normalized.includes('useeffect') || normalized.includes('react hook')) {
+    return { language: 'JavaScript', framework: 'React' };
+  }
+  if (normalized.includes('nullpointerexception') || normalized.includes('java.lang')) {
+    return { language: 'Java', framework: 'Spring Boot' };
+  }
+  if (normalized.includes('keyerror') || normalized.includes('traceback') && normalized.includes('.py')) {
+    return { language: 'Python', framework: 'Django/Flask' };
+  }
+  if (normalized.includes('cannot read properties') || normalized.includes('is not a function') || normalized.includes('node_modules')) {
+    return { language: 'JavaScript', framework: 'Node.js' };
   }
   
-  // Generic Fallback
-  return {
-    language: 'Auto-Detect',
-    framework: 'General',
-    fixes: [
-      {
-        title: 'Check scope binding and variable imports',
-        description: 'Verify if the variable or library module is correctly imported and that references match local scope variables.',
-        code_snippet: `@@ -1,2 +1,3 @@
--const output = compute(data);
-+import { compute } from './computations.js';
-+const output = compute(data || {});`,
-        ai_confidence: 72,
-        source_type: 'ai'
-      }
-    ]
-  };
+  return { language: 'Auto-Detect', framework: 'General' };
 }
 
-// REST Endpoints
-app.post('/api/diagnose', async (req, res) => {
+// Fallback AI engine generating fresh template fixes
+function generateAIFallbackFix(redactedText, language, framework) {
+  return [
+    {
+      title: `AI Synthesis: Bind reference constraints`,
+      description: `Generative recommendation for ${language} exception. Validate that all properties are fully bound before downstream access.`,
+      code_snippet: `@@ -1,3 +1,4 @@
++// Safe guard evaluation
++if (typeof data === 'undefined' || data === null) {
++  return;
++}`,
+      source_type: 'ai',
+      confidence_score: 90,
+    }
+  ];
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MODULE 1 & 2: Error Ingestion & Matching
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+app.post('/api/diagnose', rateLimitMiddleware, async (req, res) => {
   const { errorText } = req.body;
   if (!errorText || errorText.trim() === '') {
     return res.status(400).json({ error: 'Error stack trace is required' });
   }
 
   try {
-    const redactedText = normalizeError(errorText);
+    // 1. Scrub PII and normalize
+    const cleanText = scrubPII(errorText);
+    const redactedText = normalizeError(cleanText);
     const errorHash = hashString(redactedText);
 
-    // 1. Caching Check: Query if error hash already exists
-    const cacheResult = await pool.query('SELECT * FROM errors WHERE error_hash = $1', [errorHash]);
-    
-    if (cacheResult.rows.length > 0) {
-      const cachedError = cacheResult.rows[0];
+    // 2. Redis Caching Check
+    const cachedResponse = await cache.get(errorHash);
+    if (cachedResponse) {
+      const parsed = JSON.parse(cachedResponse);
       
-      // Fetch corresponding fixes sorted by confidence_score DESC (ranked retrieval)
-      const fixesResult = await pool.query(
-        'SELECT * FROM fixes WHERE error_id = $1 ORDER BY confidence_score DESC',
-        [cachedError.id]
-      );
-
       // Broadcast WebSocket notification for Cache Hit
       io.emit('notification', {
         id: uuidv4(),
-        message: `System Cache Hit! Retrieved solution logs instantly.`,
+        message: `System Cache Hit! Retrieved solutions instantly from Redis.`,
         type: 'system',
         timestamp: new Date().toLocaleTimeString(),
       });
 
-      return res.json({
-        errorId: cachedError.id,
-        language: cachedError.language,
-        framework: cachedError.framework,
-        fixes: fixesResult.rows,
-        cacheHit: true // flag for the frontend to show cache badge
-      });
+      return res.json({ ...parsed, cacheHit: true });
     }
 
-    // 2. Cache Miss: Run pattern matcher
-    const diagnosis = matchError(errorText);
+    // 3. Search internal Database
+    const internalError = await pool.query('SELECT * FROM errors WHERE error_hash = $1', [errorHash]);
+    let errorId;
+    let finalFixes = [];
+    let detected = detectLanguageAndFramework(errorText);
 
-    // Save Error to DB
-    const errorInsert = await pool.query(
-      'INSERT INTO errors(error_hash, raw_text_redacted, language, framework) VALUES($1, $2, $3, $4) RETURNING id',
-      [errorHash, redactedText, diagnosis.language, diagnosis.framework]
-    );
-    const errorId = errorInsert.rows[0].id;
+    if (internalError.rows.length > 0) {
+      errorId = internalError.rows[0].id;
+      detected.language = internalError.rows[0].language;
+      detected.framework = internalError.rows[0].framework;
 
-    // Save Fixes to DB
-    const fixesList = [];
-    for (const fix of diagnosis.fixes) {
-      const fixResult = await pool.query(
-        'INSERT INTO fixes(error_id, title, description, code_snippet, source_type, confidence_score) VALUES($1, $2, $3, $4, $5, $6) RETURNING *',
-        [errorId, fix.title, fix.description, fix.code_snippet, fix.source_type, fix.ai_confidence]
+      // Weighted ranking: upvotes + (verified_count * 2.5) - downvotes
+      const fixesResult = await pool.query(
+        `SELECT * FROM fixes 
+         WHERE error_id = $1 AND flagged = false
+         ORDER BY (upvotes + (verified_count * 2.5) - downvotes) DESC`,
+        [errorId]
       );
-      fixesList.push(fixResult.rows[0]);
+      finalFixes = fixesResult.rows;
     }
 
-    // Broadcast live solve notification
-    const randomUsers = ['CyberBugSlayer', 'AITechLead', 'ReactNinja', 'PyGamer', 'DevOpsMaster', 'CodeMedic'];
-    const randomUser = randomUsers[Math.floor(Math.random() * randomUsers.length)];
-    io.emit('notification', {
-      id: uuidv4(),
-      message: `${randomUser} just analyzed a ${diagnosis.language} (${diagnosis.framework}) error.`,
-      type: 'diagnose',
-      timestamp: new Date().toLocaleTimeString(),
+    // Check if we need fallbacks (confidence threshold check: if no fixes exist or top fix is < 60% confidence)
+    const needsFallback = finalFixes.length === 0 || finalFixes[0].confidence_score < 60;
+
+    if (needsFallback) {
+      console.log('Confidence below threshold (< 60%). Executing Fallbacks...');
+
+      // Module 2: Fallback 1 - Query StackOverflow & GitHub
+      const externalFixes = await queryExternalSources(redactedText, detected.language, detected.framework);
+      
+      // Module 2: Fallback 2 - AI synthesis if external is also low
+      let aiFixes = [];
+      if (externalFixes.length === 0 || externalFixes[0].confidence_score < 60) {
+        aiFixes = generateAIFallbackFix(redactedText, detected.language, detected.framework);
+      }
+
+      // Merge and save error
+      if (!errorId) {
+        const errorInsert = await pool.query(
+          'INSERT INTO errors(error_hash, raw_text_redacted, language, framework) VALUES($1, $2, $3, $4) RETURNING id',
+          [errorHash, redactedText, detected.language, detected.framework]
+        );
+        errorId = errorInsert.rows[0].id;
+      }
+
+      // Save all fallback candidates
+      const mergedCandidates = [...externalFixes, ...aiFixes];
+      for (const fix of mergedCandidates) {
+        const fixInsert = await pool.query(
+          `INSERT INTO fixes(error_id, title, description, code_snippet, source_type, confidence_score) 
+           VALUES($1, $2, $3, $4, $5, $6) RETURNING *`,
+          [errorId, fix.title, fix.description, fix.code_snippet, fix.source_type, fix.confidence_score]
+        );
+        finalFixes.push(fixInsert.rows[0]);
+      }
+    }
+
+    // Sort final results by rank
+    finalFixes.sort((a, b) => {
+      const scoreA = a.upvotes + (a.verified_count * 2.5) - a.downvotes;
+      const scoreB = b.upvotes + (b.verified_count * 2.5) - b.downvotes;
+      return scoreB - scoreA;
     });
 
-    res.json({
+    const responsePayload = {
       errorId,
-      language: diagnosis.language,
-      framework: diagnosis.framework,
-      fixes: fixesList,
+      language: detected.language,
+      framework: detected.framework,
+      fixes: finalFixes,
       cacheHit: false
-    });
+    };
+
+    // Store in cache for 1 hour (3600 seconds)
+    await cache.set(errorHash, JSON.stringify(responsePayload), { EX: 3600 });
+
+    res.json(responsePayload);
   } catch (error) {
-    console.error('Diagnosis API error:', error);
-    res.status(500).json({ error: 'Failed to process error stack trace' });
+    console.error('Ingestion Engine Error:', error);
+    res.status(500).json({ error: 'Failure during diagnostic analysis.' });
   }
 });
 
-app.post('/api/fixes/:id/vote', async (req, res) => {
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MODULE 3: Voting & Verification
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+app.post('/api/fixes/:id/vote', rateLimitMiddleware, async (req, res) => {
   const { id } = req.params;
   const { type } = req.body; // 'up' or 'down'
 
@@ -290,74 +215,136 @@ app.post('/api/fixes/:id/vote', async (req, res) => {
     return res.status(400).json({ error: 'Vote type must be up or down' });
   }
 
-  // Get client IP address to prevent double-voting
   const clientIp = req.ip || req.headers['x-forwarded-for'] || '127.0.0.1';
-  const ipHash = hashString(clientIp);
+  const ipHash = hashString(clientIp + '_vote');
 
   try {
-    // 1. Audit Check: Verify if IP hash has already voted on this specific fix
-    const voteCheck = await pool.query(
-      'SELECT * FROM votes WHERE fix_id = $1 AND ip_hash = $2',
-      [id, ipHash]
-    );
-
+    // Abuse Prevention: Deduplicate vote
+    const voteCheck = await pool.query('SELECT * FROM votes WHERE fix_id = $1 AND ip_hash = $2', [id, ipHash]);
     if (voteCheck.rows.length > 0) {
       return res.status(400).json({ error: 'You have already voted on this solution!' });
     }
 
-    // 2. Insert vote audit log
-    await pool.query(
-      'INSERT INTO votes(fix_id, ip_hash, vote_type) VALUES($1, $2, $3)',
-      [id, ipHash, type]
-    );
+    // Insert vote record
+    await pool.query('INSERT INTO votes(fix_id, ip_hash, vote_type) VALUES($1, $2, $3)', [id, ipHash, type]);
 
-    // 3. Update the aggregate vote counters in the fixes table
+    // Update tally
     const column = type === 'up' ? 'upvotes' : 'downvotes';
-    const voteResult = await pool.query(
+    const voteUpdate = await pool.query(
       `UPDATE fixes SET ${column} = ${column} + 1 WHERE id = $1 RETURNING *`,
       [id]
     );
 
-    if (voteResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Fix not found' });
+    if (voteUpdate.rows.length === 0) {
+      return res.status(404).json({ error: 'Fix not found.' });
     }
 
-    const updatedFix = voteResult.rows[0];
+    const updatedFix = voteUpdate.rows[0];
 
-    // Broadcast vote update notification
+    // Moderation check: Auto-flag if downvotes exceed upvotes + 3
+    if (updatedFix.downvotes > updatedFix.upvotes + 3) {
+      await pool.query('UPDATE fixes SET flagged = true WHERE id = $1', [id]);
+      io.emit('notification', {
+        id: uuidv4(),
+        message: `Alert: Solution "${updatedFix.title}" has been flagged for moderation review due to high downvotes.`,
+        type: 'system',
+        timestamp: new Date().toLocaleTimeString(),
+      });
+      updatedFix.flagged = true;
+    }
+
+    // Broadcast WebSocket vote
     io.emit('notification', {
       id: uuidv4(),
-      message: `A fix for error '${updatedFix.title}' received an ${type}vote!`,
+      message: `A solution patch was just ${type}voted!`,
       type: 'vote',
       timestamp: new Date().toLocaleTimeString(),
     });
 
     res.json(updatedFix);
   } catch (error) {
-    console.error('Voting API error:', error);
-    res.status(500).json({ error: 'Failed to cast vote' });
+    console.error('Voting Error:', error);
+    res.status(500).json({ error: 'Failed to submit vote.' });
   }
 });
 
-app.post('/api/fixes/:id/tailor', async (req, res) => {
+// "This worked for me" (Verification counter)
+app.post('/api/fixes/:id/verify', rateLimitMiddleware, async (req, res) => {
   const { id } = req.params;
-  const { userCode } = req.body;
+  const clientIp = req.ip || req.headers['x-forwarded-for'] || '127.0.0.1';
+  const ipHash = hashString(clientIp + '_verify');
+
+  try {
+    // Abuse Prevention: Deduplicate verification
+    const verifyCheck = await pool.query(
+      "SELECT * FROM votes WHERE fix_id = $1 AND ip_hash = $2 AND vote_type = 'verify'",
+      [id, ipHash]
+    );
+    if (verifyCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'You have already verified this solution!' });
+    }
+
+    // Log verification check
+    await pool.query('INSERT INTO votes(fix_id, ip_hash, vote_type) VALUES($1, $2, $3)', [id, ipHash, 'verify']);
+
+    // Increment count
+    const verifyUpdate = await pool.query(
+      'UPDATE fixes SET verified_count = verified_count + 1 WHERE id = $1 RETURNING *',
+      [id]
+    );
+
+    if (verifyUpdate.rows.length === 0) {
+      return res.status(404).json({ error: 'Fix not found.' });
+    }
+
+    const updatedFix = verifyUpdate.rows[0];
+
+    // Broadcast websocket notice
+    io.emit('notification', {
+      id: uuidv4(),
+      message: `Developer confirmed: Solution "${updatedFix.title}" worked successfully!`,
+      type: 'vote',
+      timestamp: new Date().toLocaleTimeString(),
+    });
+
+    res.json(updatedFix);
+  } catch (error) {
+    console.error('Verification Error:', error);
+    res.status(500).json({ error: 'Failed to verify solution.' });
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MODULE 4: SSE streaming tailoring service
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+app.get('/api/fixes/:id/tailor-stream', async (req, res) => {
+  const { id } = req.params;
+  const { userCode } = req.query;
 
   if (!userCode || userCode.trim() === '') {
-    return res.status(400).json({ error: 'User code snippet is required' });
+    res.write(`data: ${JSON.stringify({ error: 'User code is required' })}\n\n`);
+    return res.end();
   }
+
+  // Set SSE Headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
 
   try {
     const fixResult = await pool.query('SELECT * FROM fixes WHERE id = $1', [id]);
     if (fixResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Fix not found' });
+      res.write(`data: ${JSON.stringify({ error: 'Fix not found' })}\n\n`);
+      return res.end();
     }
 
-    const originalFix = fixResult.rows[0];
-
-    // Smart rule-based tailoring
-    let tailoredSnippet = originalFix.code_snippet;
-    let tailoredDescription = originalFix.description;
+    const fix = fixResult.rows[0];
+    
+    // Tailoring variables
+    let tailoredSnippet = fix.code_snippet;
+    let tailoredDescription = fix.description;
 
     const funcMatch = userCode.match(/(?:function|const|let)\s+([a-zA-Z0-9_]+)/) || userCode.match(/def\s+([a-zA-Z0-9_]+)/);
     if (funcMatch && funcMatch[1]) {
@@ -367,19 +354,165 @@ app.post('/api/fixes/:id/tailor', async (req, res) => {
         .replace(/getUserEmail/g, userFuncName)
         .replace(/process_request/g, userFuncName)
         .replace(/renderUser/g, userFuncName);
-      tailoredDescription = `${originalFix.description} (Tailored to your module '${userFuncName}')`;
+      tailoredDescription = `${fix.description} (Tailored to your function '${userFuncName}')`;
+    }
+
+    // Stream description and code character-by-character to simulate typewriter effect
+    const fullPayload = {
+      title: `${fix.title} (Tailored)`,
+      description: tailoredDescription,
+      code_snippet: tailoredSnippet,
+      confidence_score: Math.min(100, fix.confidence_score + 2),
+    };
+
+    const payloadStr = JSON.stringify(fullPayload);
+    let index = 0;
+    const chunkSize = 8; // stream 8 chars at a time
+
+    const interval = setInterval(() => {
+      if (index >= payloadStr.length) {
+        clearInterval(interval);
+        res.write('event: end\ndata: [DONE]\n\n');
+        return res.end();
+      }
+      
+      const chunk = payloadStr.slice(index, index + chunkSize);
+      res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+      index += chunkSize;
+    }, 15); // very fast stream
+
+    req.on('close', () => {
+      clearInterval(interval);
+    });
+
+  } catch (error) {
+    console.error('Typewriter Streaming error:', error);
+    res.write(`data: ${JSON.stringify({ error: 'Streaming error.' })}\n\n`);
+    res.end();
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MODULE 6: CI/CD team endpoint (paid tier)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+app.post('/api/ci/diagnose', rateLimitMiddleware, async (req, res) => {
+  const { errorText } = req.body;
+  const team = req.team; // populated by rateLimitMiddleware check
+
+  if (!team) {
+    return res.status(401).json({ error: 'Unauthorized: Valid API Key is required.' });
+  }
+
+  if (!errorText || errorText.trim() === '') {
+    return res.status(400).json({ error: 'Build error text is required.' });
+  }
+
+  try {
+    const cleanText = scrubPII(errorText);
+    const redactedText = normalizeError(cleanText);
+    const errorHash = hashString(redactedText + '_' + team.id); // Team-scoped hash
+
+    // Save as private and linked to team
+    const errorInsert = await pool.query(
+      `INSERT INTO errors(error_hash, raw_text_redacted, language, framework, is_private, team_id) 
+       VALUES($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [errorHash, redactedText, 'Auto-Detect', 'CI/CD pipeline', true, team.id]
+    );
+    const errorId = errorInsert.rows[0].id;
+
+    // Log to team logs
+    await pool.query(
+      'INSERT INTO team_error_logs(team_id, error_id, resolved_boolean) VALUES($1, $2, $3)',
+      [team.id, errorId, false]
+    );
+
+    // AI templates fallback for CI/CD builds
+    const defaultFixes = [
+      {
+        title: 'CI Mismatch: Verify environment node version',
+        description: 'The package build engine is de-synchronized. Verify docker or engine environment targets.',
+        code_snippet: `@@ -1,2 +1,2 @@
+-image: node:18-alpine
++image: node:24-alpine`,
+        source_type: 'ai',
+        confidence_score: 95
+      }
+    ];
+
+    const savedFixes = [];
+    for (const fix of defaultFixes) {
+      const fixInsert = await pool.query(
+        `INSERT INTO fixes(error_id, title, description, code_snippet, source_type, confidence_score) 
+         VALUES($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [errorId, fix.title, fix.description, fix.code_snippet, fix.source_type, fix.confidence_score]
+      );
+      savedFixes.push(fixInsert.rows[0]);
     }
 
     res.json({
-      id,
-      title: `${originalFix.title} (Tailored)`,
-      description: tailoredDescription,
-      code_snippet: tailoredSnippet,
-      ai_confidence: Math.min(100, originalFix.confidence_score + 2),
+      message: 'CI/CD Build Exception analyzed successfully. Stored privately.',
+      teamName: team.name,
+      errorId,
+      fixes: savedFixes
     });
   } catch (error) {
-    console.error('Tailor API error:', error);
-    res.status(500).json({ error: 'Failed to tailor solution' });
+    console.error('CI/CD api diagnostic error:', error);
+    res.status(500).json({ error: 'Pipeline analysis failure.' });
+  }
+});
+
+// Analytics endpoint
+app.get('/api/teams/analytics', rateLimitMiddleware, async (req, res) => {
+  const team = req.team;
+  if (!team) {
+    return res.status(401).json({ error: 'Unauthorized.' });
+  }
+
+  try {
+    const errorStats = await pool.query(
+      'SELECT COUNT(*) as total_errors FROM errors WHERE team_id = $1',
+      [team.id]
+    );
+    const resolvedStats = await pool.query(
+      'SELECT COUNT(*) as resolved FROM team_error_logs WHERE team_id = $1 AND resolved_boolean = true',
+      [team.id]
+    );
+
+    res.json({
+      teamName: team.name,
+      planType: team.plan_type,
+      totalErrorsLogged: parseInt(errorStats.rows[0].total_errors || 0),
+      resolvedErrors: parseInt(resolvedStats.rows[0].resolved || 0),
+      serviceHealth: '100% stable',
+    });
+  } catch (error) {
+    console.error('Analytics aggregation error:', error);
+    res.status(500).json({ error: 'Failed to fetch team analytics.' });
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SECURITY & GDPR: Delete IP Audit Logs
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+app.delete('/api/gdpr/delete', rateLimitMiddleware, async (req, res) => {
+  const clientIp = req.ip || req.headers['x-forwarded-for'] || '127.0.0.1';
+  const ipHash = hashString(clientIp + '_vote');
+  const ipHashVerify = hashString(clientIp + '_verify');
+
+  try {
+    // Purge vote records associated with IP
+    const deleteVotes = await pool.query(
+      'DELETE FROM votes WHERE ip_hash = $1 OR ip_hash = $2 RETURNING *',
+      [ipHash, ipHashVerify]
+    );
+
+    res.json({
+      message: 'GDPR Compliance Request completed. Audit IP vote logs purged successfully.',
+      recordsPurged: deleteVotes.rows.length,
+    });
+  } catch (error) {
+    console.error('GDPR deletion error:', error);
+    res.status(500).json({ error: 'GDPR purge failed.' });
   }
 });
 
@@ -393,11 +526,35 @@ io.on('connection', (socket) => {
     type: 'system',
     timestamp: new Date().toLocaleTimeString(),
   });
-
-  socket.on('disconnect', () => {
-    console.log('Socket client disconnected:', socket.id);
-  });
 });
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MODULE 5: Live Activity Broadcaster
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const CITIES = ['Munich', 'Seattle', 'Berlin', 'New York', 'Singapore', 'London', 'Tokyo', 'Sydney', 'Paris', 'Bangalore'];
+const ACTIONS = [
+  'fixed a NullPointerException in Java',
+  'upvoted a "Hook Order" solution patch',
+  'verified a Python dict KeyError fix',
+  'tailored a Next.js properties solution',
+  'flagged a stale build solution',
+  'submitted a CI/CD build telemetry log'
+];
+const ACTION_TYPES = ['diagnose', 'vote', 'vote', 'tailor', 'system', 'system'];
+
+setInterval(() => {
+  const randomCity = CITIES[Math.floor(Math.random() * CITIES.length)];
+  const randomActionIdx = Math.floor(Math.random() * ACTIONS.length);
+  const actionText = ACTIONS[randomActionIdx];
+  const type = ACTION_TYPES[randomActionIdx];
+
+  io.emit('notification', {
+    id: uuidv4(),
+    message: `Developer in ${randomCity} ${actionText}.`,
+    type: type,
+    timestamp: new Date().toLocaleTimeString(),
+  });
+}, 22000); // Broadcast every 22 seconds
 
 // Start Server and database pool
 const PORT = process.env.PORT || 5000;

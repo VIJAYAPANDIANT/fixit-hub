@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import { AlertCircle, Shield, Globe, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
+import { Shield, Globe, Sparkles } from 'lucide-react';
 import Canvas3D from './components/Canvas3D';
 import TerminalConsole from './components/TerminalConsole';
 import FixCards from './components/FixCards';
@@ -58,7 +58,7 @@ export default function App() {
 
       const data = await response.json();
 
-      // If it is a cache hit, make the resolution instant! Otherwise, simulate visual scanning logs.
+      // If it is a cache hit, bypass scan logs instantly
       if (data.cacheHit) {
         setFixes(data.fixes);
         setCacheHit(true);
@@ -102,10 +102,10 @@ export default function App() {
       if (response.status === 400) {
         const errorData = await response.json();
         
-        // Show glowing warning toast
+        // Show warning toast
         const warnNotif = {
           id: Math.random().toString(),
-          message: `Double Vote Blocked: You have already submitted a vote for this patch.`,
+          message: errorData.error || `Double Vote Blocked: You have already submitted a vote for this patch.`,
           type: 'diagnose', // pink/rose border for warning
           timestamp: new Date().toLocaleTimeString()
         };
@@ -136,25 +136,97 @@ export default function App() {
     }
   };
 
-  // API Call: Tailor Fix
-  const handleTailorFix = async (fixId, userCode) => {
-    setIsTailoringMap((prev) => ({ ...prev, [fixId]: true }));
+  // API Call: "This worked for me" (Verify Solution)
+  const handleVerify = async (fixId) => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/fixes/${fixId}/tailor`, {
+      const response = await fetch(`${BACKEND_URL}/api/fixes/${fixId}/verify`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userCode }),
+        headers: { 'Content-Type': 'application/json' }
       });
 
-      if (!response.ok) throw new Error('Tailoring failed');
-      const data = await response.json();
-      return data;
+      // Handle double verification block
+      if (response.status === 400) {
+        const errorData = await response.json();
+        
+        // Show warning toast
+        const warnNotif = {
+          id: Math.random().toString(),
+          message: errorData.error || `Verify Blocked: You have already verified this patch.`,
+          type: 'diagnose', 
+          timestamp: new Date().toLocaleTimeString()
+        };
+        setNotifications((prev) => [warnNotif, ...prev].slice(0, 4));
+        return;
+      }
+
+      if (!response.ok) throw new Error('Verification failed');
+
+      const updatedFix = await response.json();
+      
+      // Update local state
+      setFixes((prev) =>
+        prev.map((f) => (f.id === fixId ? { ...f, ...updatedFix } : f))
+      );
+
+      // Confetti burst for verified solution
+      confetti({
+        particleCount: 80,
+        spread: 60,
+        origin: { y: 0.75 },
+        colors: ['#22c55e', '#10b981', '#06b6d4']
+      });
+
     } catch (err) {
       console.error(err);
-      alert('Failed to tailor fix. Please try again.');
-    } finally {
-      setIsTailoringMap((prev) => ({ ...prev, [fixId]: false }));
     }
+  };
+
+  // SSE Stream: Stream Tailored solution character-by-character
+  const handleTailorFixStream = (fixId, userCode, onChunk, onComplete) => {
+    setIsTailoringMap((prev) => ({ ...prev, [fixId]: true }));
+
+    const url = `${BACKEND_URL}/api/fixes/${fixId}/tailor-stream?userCode=${encodeURIComponent(userCode)}`;
+    const eventSource = new EventSource(url);
+    
+    let buffer = '';
+
+    eventSource.onmessage = (event) => {
+      // Stream completed indicator
+      if (event.data === '[DONE]') {
+        eventSource.close();
+        setIsTailoringMap((prev) => ({ ...prev, [fixId]: false }));
+        try {
+          const finalData = JSON.parse(buffer);
+          onComplete(finalData);
+        } catch (e) {
+          console.error("Failed to parse full stream payload:", e);
+        }
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed.error) {
+          eventSource.close();
+          setIsTailoringMap((prev) => ({ ...prev, [fixId]: false }));
+          alert(parsed.error);
+          return;
+        }
+        
+        buffer += parsed.chunk;
+        onChunk(buffer); // update typing log
+      } catch (err) {
+        // partial string buffering
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.warn("SSE stream closed or completed.");
+      eventSource.close();
+      setIsTailoringMap((prev) => ({ ...prev, [fixId]: false }));
+    };
+
+    return eventSource;
   };
 
   const handleDismissNotification = (id) => {
@@ -237,7 +309,8 @@ export default function App() {
               <FixCards
                 fixes={fixes}
                 onVote={handleVote}
-                onTailorFix={handleTailorFix}
+                onVerify={handleVerify}
+                onTailorFixStream={handleTailorFixStream}
                 isTailoringMap={isTailoringMap}
                 cacheHit={cacheHit}
               />

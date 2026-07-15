@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ThumbsUp, ThumbsDown, Sliders, Check, Copy, Flame, HelpCircle, Loader2, Sparkles } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Sliders, Check, Copy, Flame, ShieldAlert, CheckCircle, Loader2, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 function DiffViewer({ diffText }) {
@@ -31,11 +31,12 @@ function DiffViewer({ diffText }) {
   );
 }
 
-export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap, cacheHit }) {
+export default function FixCards({ fixes, onVote, onVerify, onTailorFixStream, isTailoringMap, cacheHit }) {
   const [copiedId, setCopiedId] = useState(null);
   const [tailorInputText, setTailorInputText] = useState({});
   const [tailoredFixes, setTailoredFixes] = useState({});
   const [activeTailorId, setActiveTailorId] = useState(null);
+  const [streamProgressLogs, setStreamProgressLogs] = useState({});
 
   const handleCopy = (id, text) => {
     navigator.clipboard.writeText(text);
@@ -47,45 +48,74 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap, c
     onVote(id, type);
   };
 
-  const handleTailorSubmit = async (id, originalFix) => {
+  const handleVerifySubmit = (id) => {
+    onVerify(id);
+  };
+
+  // Typewriter drawing effect on complete
+  const drawTypewriter = (id, targetFix) => {
+    let currentCode = '';
+    const fullCode = targetFix.code_snippet;
+    let index = 0;
+    
+    // Clear log and initialize partial object
+    setStreamProgressLogs(prev => ({ ...prev, [id]: '' }));
+
+    const interval = setInterval(() => {
+      if (index >= fullCode.length) {
+        clearInterval(interval);
+        // Save final complete object
+        setTailoredFixes(prev => ({
+          ...prev,
+          [id]: targetFix
+        }));
+        
+        // Burst confetti
+        confetti({
+          particleCount: 50,
+          spread: 40,
+          origin: { y: 0.8 },
+          colors: ['#06b6d4', '#22c55e']
+        });
+        return;
+      }
+
+      currentCode += fullCode.slice(index, index + 16);
+      setTailoredFixes(prev => ({
+        ...prev,
+        [id]: { ...targetFix, code_snippet: currentCode }
+      }));
+      index += 16;
+    }, 15);
+  };
+
+  const handleTailorSubmit = (id) => {
     const userCode = tailorInputText[id];
     if (!userCode || !userCode.trim()) return;
 
-    try {
-      const result = await onTailorFix(id, userCode);
-      if (result) {
-        setTailoredFixes(prev => ({
-          ...prev,
-          [id]: result // Save tailored version of this fix
+    setStreamProgressLogs(prev => ({ ...prev, [id]: 'Opening secure SSE channel...' }));
+
+    onTailorFixStream(
+      id,
+      userCode,
+      (partialBuffer) => {
+        // Chunk callback: update streaming log length
+        setStreamProgressLogs(prev => ({ 
+          ...prev, 
+          [id]: `Receiving tailored matrices (${partialBuffer.length} bytes)...` 
         }));
-        
-        // Trigger cyber explosion confetti
-        confetti({
-          particleCount: 80,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          colors: ['#06b6d4', '#22c55e']
-        });
-        confetti({
-          particleCount: 80,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          colors: ['#a855f7', '#06b6d4']
-        });
+      },
+      (finalPayload) => {
+        // Completed callback: Type it out!
+        setStreamProgressLogs(prev => ({ ...prev, [id]: 'De-serializing payloads... Typwriting patch...' }));
+        drawTypewriter(id, finalPayload);
       }
-    } catch (err) {
-      console.error(err);
-    }
+    );
   };
 
   const handleToggleTailorPane = (id) => {
     setActiveTailorId(activeTailorId === id ? null : id);
   };
-
-  // Sort by upvotes (high to low)
-  const sortedFixes = [...fixes].sort((a, b) => b.upvotes - a.upvotes);
 
   const getSourceBadgeColor = (source) => {
     switch (source) {
@@ -112,15 +142,15 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap, c
             </div>
             <div>
               <div className="text-sm font-mono font-bold text-white uppercase tracking-wider">
-                System Cache Hit
+                Redis Cache Hit
               </div>
               <div className="text-xs text-gray-400 font-sans">
-                Found matching error footprint footprint_hash. Bypassed diagnosis scanner queue in 0.04ms.
+                Found matching trace in key-value registry. Loaded solutions instantly.
               </div>
             </div>
           </div>
           <span className="text-2xs font-mono text-cyan-400 neon-text-cyan font-bold">
-            INSTANT MATCHED
+            INSTANT CACHE MATCH
           </span>
         </div>
       )}
@@ -131,23 +161,33 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap, c
           <span>DIAGNOSTIC REPORT: {fixes.length} SOLUTIONS</span>
         </h2>
         <div className="text-xs font-mono text-gray-400">
-          Ranked by confidence score
+          Ranked by confidence + verifications
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {sortedFixes.map((fix) => {
+        {fixes.map((fix) => {
           const isTailored = !!tailoredFixes[fix.id];
           const displayFix = tailoredFixes[fix.id] || fix;
           const isTailoring = !!isTailoringMap[fix.id];
+          const isFlagged = displayFix.flagged;
 
           return (
             <div 
               key={fix.id} 
               className={`glass-panel glass-panel-hover rounded-xl overflow-hidden border-white/5 transition-all duration-300 ${
                 isTailored ? 'neon-border-green/20 border-emerald-500/30' : ''
-              }`}
+              } ${isFlagged ? 'border-rose-500/30 opacity-70' : ''}`}
             >
+              
+              {/* Flagged Caution Banner */}
+              {isFlagged && (
+                <div className="bg-rose-950/20 border-b border-rose-500/20 px-5 py-2.5 flex items-center gap-2 text-xs font-mono text-rose-400">
+                  <ShieldAlert size={14} className="animate-pulse" />
+                  <span>FLAGGED FOR MODERATION: High downvote ratio detected. Check patch validity prior to usage.</span>
+                </div>
+              )}
+
               {/* Card Header */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 bg-black/30 border-b border-white/5 gap-3">
                 <div className="space-y-1">
@@ -208,21 +248,32 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap, c
               {/* Card Footer */}
               <div className="flex justify-between items-center px-5 py-4 bg-black/40 border-t border-white/5 font-mono text-xs">
                 
-                {/* Vote actions */}
-                <div className="flex items-center gap-4">
+                {/* Vote & Verification actions */}
+                <div className="flex flex-wrap items-center gap-5">
+                  <div className="flex items-center gap-3 border-r border-white/5 pr-4">
+                    <button
+                      onClick={() => handleVoteSubmit(fix.id, 'up')}
+                      className="flex items-center gap-1 text-gray-400 hover:text-emerald-400 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <ThumbsUp size={13} />
+                      <span>{displayFix.upvotes}</span>
+                    </button>
+                    <button
+                      onClick={() => handleVoteSubmit(fix.id, 'down')}
+                      className="flex items-center gap-1 text-gray-400 hover:text-rose-400 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <ThumbsDown size={13} />
+                      <span>{displayFix.downvotes}</span>
+                    </button>
+                  </div>
+
+                  {/* "This worked for me" Verify Button */}
                   <button
-                    onClick={() => handleVoteSubmit(fix.id, 'up')}
-                    className="flex items-center gap-1.5 text-gray-400 hover:text-emerald-400 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    onClick={() => handleVerifySubmit(fix.id)}
+                    className="flex items-center gap-1.5 text-gray-400 hover:text-emerald-400 transition-all cursor-pointer font-bold"
                   >
-                    <ThumbsUp size={14} />
-                    <span>{displayFix.upvotes}</span>
-                  </button>
-                  <button
-                    onClick={() => handleVoteSubmit(fix.id, 'down')}
-                    className="flex items-center gap-1.5 text-gray-400 hover:text-rose-400 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                  >
-                    <ThumbsDown size={14} />
-                    <span>{displayFix.downvotes}</span>
+                    <CheckCircle size={13} className="text-emerald-500/80" />
+                    <span>This worked for me ({displayFix.verified_count || 0})</span>
                   </button>
                 </div>
 
@@ -249,7 +300,7 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap, c
                     </label>
                     {isTailoring && (
                       <span className="flex items-center gap-1 text-2xs font-mono text-cyan-400 animate-pulse">
-                        <Loader2 size={10} className="animate-spin" /> Tailoring variables...
+                        <Loader2 size={10} className="animate-spin" /> Stream active...
                       </span>
                     )}
                   </div>
@@ -261,6 +312,13 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap, c
                     placeholder="e.g. const fetchUser = async (uid) => { ... }"
                     className="w-full h-24 bg-black/40 text-cyan-300 border border-white/10 rounded p-2.5 font-mono text-xs focus:outline-none focus:border-cyan-500/50 placeholder:text-gray-700 resize-none"
                   />
+
+                  {/* Streaming Progress Logs */}
+                  {streamProgressLogs[fix.id] && (
+                    <div className="text-2xs font-mono text-cyan-500/80 animate-pulse">
+                      &gt; {streamProgressLogs[fix.id]}
+                    </div>
+                  )}
                   
                   <div className="flex justify-end gap-2">
                     <button
@@ -270,11 +328,11 @@ export default function FixCards({ fixes, onVote, onTailorFix, isTailoringMap, c
                       Cancel
                     </button>
                     <button
-                      onClick={() => handleTailorSubmit(fix.id, fix)}
+                      onClick={() => handleTailorSubmit(fix.id)}
                       disabled={isTailoring || !(tailorInputText[fix.id] || '').trim()}
                       className="px-4 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs shadow-md shadow-cyan-900/20 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
                     >
-                      {isTailoring ? 'Tailoring...' : 'Refine code diff'}
+                      {isTailoring ? 'Streaming...' : 'Refine code diff'}
                     </button>
                   </div>
                 </div>
