@@ -7,6 +7,7 @@ import com.fixit.hub.domain.entity.User;
 import com.fixit.hub.dto.CommentRequest;
 import com.fixit.hub.dto.CommentResponse;
 import com.fixit.hub.dto.IssueResponse;
+import com.fixit.hub.dto.AIAnalysisResponse;
 import com.fixit.hub.service.IssueService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -28,6 +29,7 @@ import java.util.UUID;
 public class IssueController {
 
     private final IssueService issueService;
+    private final com.fixit.hub.service.AIService aiService;
 
     public record UpdateStatusRequest(IssueStatus status) {}
     public record AssignIssueRequest(UUID userId) {}
@@ -87,5 +89,14 @@ public class IssueController {
     @Operation(summary = "Get Elasticsearch logs list", description = "Queries raw occurrence documents mapped to this exception")
     public ResponseEntity<List<EventLog>> getIssueEvents(@PathVariable UUID id) {
         return ResponseEntity.ok(issueService.getIssueEvents(id));
+    }
+
+    @PostMapping("/issues/{id}/ai-diagnose")
+    @Operation(summary = "Request advanced AI diagnostics", description = "Queries the AI service to analyze the error stacktrace and return detailed resolution steps when no verified solution exists.")
+    public ResponseEntity<AIAnalysisResponse> getAIDiagnosis(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String additionalContext
+    ) {
+        return ResponseEntity.ok(aiService.getAIDiagnosis(id, additionalContext));
     }
 }
