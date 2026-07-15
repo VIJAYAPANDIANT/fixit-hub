@@ -29,6 +29,8 @@ public class AIDiagnosticServiceImpl implements AIDiagnosticService {
 
     private final IssueRepository issueRepository;
     private final ObjectMapper objectMapper;
+    private final com.fixit.hub.repository.es.IssueDocumentRepository issueDocumentRepository;
+    private final com.fixit.hub.mapper.IssueMapper issueMapper;
 
     @Value("${integrations.gemini.api-key}")
     private String apiKey;
@@ -142,6 +144,11 @@ public class AIDiagnosticServiceImpl implements AIDiagnosticService {
             if (persistentIssue != null) {
                 persistentIssue.setAiAnalysis(jsonPayload);
                 issueRepository.save(persistentIssue);
+                try {
+                    issueDocumentRepository.save(issueMapper.toDocument(persistentIssue));
+                } catch (Exception esEx) {
+                    log.error("Failed to sync AI analysis to Elasticsearch: {}", esEx.getMessage());
+                }
                 log.info("AI Analysis successfully generated and saved for issue: {}", issue.getId());
             }
         } catch (Exception e) {

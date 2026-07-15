@@ -33,6 +33,12 @@ public class IngestionServiceImpl implements IngestionService {
     private final EventLogRepository eventLogRepository;
     private final AIDiagnosticService aiDiagnosticService;
     private final StringRedisTemplate redisTemplate;
+    private final com.fixit.hub.repository.es.IssueDocumentRepository issueDocumentRepository;
+    private final com.fixit.hub.mapper.IssueMapper issueMapper;
+    private final com.fixit.hub.repository.jpa.ProgrammingLanguageRepository programmingLanguageRepository;
+    private final com.fixit.hub.repository.jpa.FrameworkRepository frameworkRepository;
+    private final com.fixit.hub.repository.jpa.CategoryRepository categoryRepository;
+    private final com.fixit.hub.repository.jpa.TagRepository tagRepository;
 
     @Override
     @Transactional
@@ -98,6 +104,8 @@ public class IngestionServiceImpl implements IngestionService {
                     .lastSeen(now)
                     .occurrencesCount(1)
                     .build();
+
+            classifyIssueHeuristics(issue, request);
         } else {
             issue.setOccurrencesCount(issue.getOccurrencesCount() + 1);
             issue.setLastSeen(now);
@@ -108,6 +116,13 @@ public class IngestionServiceImpl implements IngestionService {
         }
 
         issueRepository.save(issue);
+
+        // Sync to Elasticsearch
+        try {
+            issueDocumentRepository.save(issueMapper.toDocument(issue));
+        } catch (Exception e) {
+            log.error("Failed to index issue in Elasticsearch: {}", e.getMessage());
+        }
 
         // 4. Save Raw Event to Elasticsearch
         EventLog eventLog = EventLog.builder()
@@ -155,5 +170,79 @@ public class IngestionServiceImpl implements IngestionService {
             return IssueSeverity.LOW;
         }
         return IssueSeverity.MEDIUM;
+    }
+
+    private void classifyIssueHeuristics(Issue issue, EventIngestionRequest request) {
+        String matchText = (request.exceptionType() + " " + 
+                           (request.exceptionMessage() != null ? request.exceptionMessage() : "") + " " + 
+                           (request.stacktrace() != null ? request.stacktrace() : "")).toLowerCase();
+
+        // 1. Language & Framework
+        ProgrammingLanguage lang = null;
+        Framework framework = null;
+
+        if (matchText.contains("java") || matchText.contains("spring")) {
+            lang = programmingLanguageRepository.findBySlug("java").orElse(null);
+            if (matchText.contains("spring")) {
+                framework = frameworkRepository.findBySlug("spring-boot").orElse(null);
+            }
+        } else if (matchText.contains("django") || matchText.contains(".py")) {
+            lang = programmingLanguageRepository.findBySlug("python").orElse(null);
+            if (matchText.contains("django")) {
+                framework = frameworkRepository.findBySlug("django").orElse(null);
+            }
+        } else if (matchText.contains("gin") || matchText.contains(".go")) {
+            lang = programmingLanguageRepository.findBySlug("go").orElse(null);
+            if (matchText.contains("gin")) {
+                framework = frameworkRepository.findBySlug("gin").orElse(null);
+            }
+        } else if (matchText.contains("next") || matchText.contains("tsconfig")) {
+            lang = programmingLanguageRepository.findBySlug("typescript").orElse(null);
+            framework = frameworkRepository.findBySlug("nextjs").orElse(null);
+        } else if (matchText.contains("express") || matchText.contains("node_modules")) {
+            lang = programmingLanguageRepository.findBySlug("javascript").orElse(null);
+            framework = frameworkRepository.findBySlug("express").orElse(null);
+        }
+
+        issue.setLanguage(lang);
+        issue.setFramework(framework);
+
+        // 2. Category
+        Category category = null;
+        if (matchText.contains("sql") || matchText.contains("database") || matchText.contains("connection pool") || matchText.contains("postgres")) {
+            category = categoryRepository.findBySlug("database").orElse(null);
+        } else if (matchText.contains("socket") || matchText.contains("dns") || matchText.contains("cors") || matchText.contains("network")) {
+            category = categoryRepository.findBySlug("network").orElse(null);
+        } else if (matchText.contains("unauthorized") || matchText.contains("jwt") || matchText.contains("token") || matchText.contains("forbidden") || matchText.contains("auth")) {
+            category = categoryRepository.findBySlug("authentication").orElse(null);
+        } else if (matchText.contains("memory") || matchText.contains("oom") || matchText.contains("heap") || matchText.contains("garbage collector")) {
+            category = categoryRepository.findBySlug("memory").orElse(null);
+        } else if (matchText.contains("deadlock") || matchText.contains("thread lock") || matchText.contains("race condition") || matchText.contains("concurrency")) {
+            category = categoryRepository.findBySlug("concurrency").orElse(null);
+        }
+        issue.setCategory(category);
+
+        // 3. Tags
+        java.util.Set<Tag> tags = new java.util.HashSet<>();
+        if (matchText.contains("nullpointer")) {
+            tagRepository.findBySlug("nullpointer").ifPresent(tags::add);
+        }
+        if (matchText.contains("oom") || matchText.contains("out of memory")) {
+            tagRepository.findBySlug("oom").ifPresent(tags::add);
+        }
+        if (matchText.contains("timeout")) {
+            tagRepository.findBySlug("timeout").ifPresent(tags::add);
+        }
+        if (matchText.contains("cors")) {
+            tagRepository.findBySlug("cors").ifPresent(tags::add);
+        }
+        if (matchText.contains("deadlock")) {
+            tagRepository.findBySlug("deadlock").ifPresent(tags::add);
+        }
+        if (matchText.contains("production") || matchText.contains("prod")) {
+            tagRepository.findBySlug("prod-crash").ifPresent(tags::add);
+        }
+        
+        issue.setTags(tags);
     }
 }

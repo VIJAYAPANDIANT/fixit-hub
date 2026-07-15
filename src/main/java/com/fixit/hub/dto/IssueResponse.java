@@ -27,5 +27,12 @@ public record IssueResponse(
     LocalDateTime firstSeen,
     LocalDateTime lastSeen,
     int occurrencesCount,
-    String aiAnalysis
+    String aiAnalysis,
+    String languageName,
+    String languageSlug,
+    String frameworkName,
+    String frameworkSlug,
+    String categoryName,
+    String categorySlug,
+    java.util.List<String> tags
 ) {}

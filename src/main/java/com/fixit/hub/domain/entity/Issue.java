@@ -68,6 +68,26 @@ public class Issue {
     private int views;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "language_id")
+    private ProgrammingLanguage language;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "framework_id")
+    private Framework framework;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "error_tags",
+        joinColumns = @JoinColumn(name = "error_id"),
+        inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private java.util.Set<Tag> tags;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_to")
     private User assignedTo;
 

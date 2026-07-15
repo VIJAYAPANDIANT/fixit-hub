@@ -5,6 +5,7 @@ import com.fixit.hub.domain.entity.*;
 import com.fixit.hub.dto.CommentResponse;
 import com.fixit.hub.dto.ErrorRequest;
 import com.fixit.hub.dto.IssueResponse;
+import com.fixit.hub.dto.IssueSearchResponse;
 import com.fixit.hub.exception.BadRequestException;
 import com.fixit.hub.exception.ResourceNotFoundException;
 import com.fixit.hub.mapper.CommentMapper;
@@ -16,6 +17,7 @@ import com.fixit.hub.repository.jpa.ProjectRepository;
 import com.fixit.hub.repository.jpa.UserRepository;
 import com.fixit.hub.service.IssueService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class IssueServiceImpl implements IssueService {
@@ -38,6 +41,12 @@ public class IssueServiceImpl implements IssueService {
     private final EventLogRepository eventLogRepository;
     private final IssueMapper issueMapper;
     private final CommentMapper commentMapper;
+    private final com.fixit.hub.repository.es.IssueDocumentRepository issueDocumentRepository;
+    private final com.fixit.hub.service.IssueSearchService issueSearchService;
+    private final com.fixit.hub.repository.jpa.ProgrammingLanguageRepository programmingLanguageRepository;
+    private final com.fixit.hub.repository.jpa.FrameworkRepository frameworkRepository;
+    private final com.fixit.hub.repository.jpa.CategoryRepository categoryRepository;
+    private final com.fixit.hub.repository.jpa.TagRepository tagRepository;
 
     @Override
     @Transactional
@@ -74,7 +83,28 @@ public class IssueServiceImpl implements IssueService {
                 .occurrencesCount(1)
                 .build();
 
+        if (request.languageId() != null) {
+            issue.setLanguage(programmingLanguageRepository.findById(request.languageId()).orElse(null));
+        }
+        if (request.frameworkId() != null) {
+            issue.setFramework(frameworkRepository.findById(request.frameworkId()).orElse(null));
+        }
+        if (request.categoryId() != null) {
+            issue.setCategory(categoryRepository.findById(request.categoryId()).orElse(null));
+        }
+        if (request.tagIds() != null && !request.tagIds().isEmpty()) {
+            issue.setTags(new java.util.HashSet<>(tagRepository.findAllById(request.tagIds())));
+        }
+
         issueRepository.save(issue);
+
+        // Sync to Elasticsearch
+        try {
+            issueDocumentRepository.save(issueMapper.toDocument(issue));
+        } catch (Exception e) {
+            log.error("Failed to index new issue in Elasticsearch: {}", e.getMessage());
+        }
+
         return issueMapper.toResponse(issue);
     }
 
@@ -95,7 +125,36 @@ public class IssueServiceImpl implements IssueService {
         issue.setSeverity(request.severity());
         issue.setDifficulty(request.difficulty());
 
+        if (request.languageId() != null) {
+            issue.setLanguage(programmingLanguageRepository.findById(request.languageId()).orElse(null));
+        } else {
+            issue.setLanguage(null);
+        }
+        if (request.frameworkId() != null) {
+            issue.setFramework(frameworkRepository.findById(request.frameworkId()).orElse(null));
+        } else {
+            issue.setFramework(null);
+        }
+        if (request.categoryId() != null) {
+            issue.setCategory(categoryRepository.findById(request.categoryId()).orElse(null));
+        } else {
+            issue.setCategory(null);
+        }
+        if (request.tagIds() != null) {
+            issue.setTags(new java.util.HashSet<>(tagRepository.findAllById(request.tagIds())));
+        } else {
+            issue.setTags(null);
+        }
+
         issueRepository.save(issue);
+
+        // Sync to Elasticsearch
+        try {
+            issueDocumentRepository.save(issueMapper.toDocument(issue));
+        } catch (Exception e) {
+            log.error("Failed to index updated issue in Elasticsearch: {}", e.getMessage());
+        }
+
         return issueMapper.toResponse(issue);
     }
 
@@ -105,6 +164,11 @@ public class IssueServiceImpl implements IssueService {
         Issue issue = issueRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Error log not found with ID: " + id));
         issueRepository.delete(issue);
+        try {
+            issueDocumentRepository.deleteById(id.toString());
+        } catch (Exception e) {
+            log.error("Failed to delete issue from Elasticsearch: {}", e.getMessage());
+        }
     }
 
     @Override
@@ -116,19 +180,39 @@ public class IssueServiceImpl implements IssueService {
             String search,
             String sortBy
     ) {
-        Sort sortOrder;
-        if ("popularity".equalsIgnoreCase(sortBy)) {
-            sortOrder = Sort.by(Sort.Direction.DESC, "popularity");
-        } else if ("views".equalsIgnoreCase(sortBy)) {
-            sortOrder = Sort.by(Sort.Direction.DESC, "views");
-        } else {
-            sortOrder = Sort.by(Sort.Direction.DESC, "lastSeen");
-        }
+        // Try querying Elasticsearch first
+        try {
+            IssueSearchResponse searchResponse = issueSearchService.searchIssues(
+                    projectId,
+                    search,
+                    status,
+                    severity,
+                    difficulty,
+                    null, // language
+                    null, // framework
+                    null, // category
+                    null, // tags
+                    sortBy
+            );
+            return searchResponse.issues();
+        } catch (Exception e) {
+            log.warn("Elasticsearch query failed, falling back to database LIKE query: {}", e.getMessage());
+            
+            // Database fallback
+            Sort sortOrder;
+            if ("popularity".equalsIgnoreCase(sortBy)) {
+                sortOrder = Sort.by(Sort.Direction.DESC, "popularity");
+            } else if ("views".equalsIgnoreCase(sortBy)) {
+                sortOrder = Sort.by(Sort.Direction.DESC, "views");
+            } else {
+                sortOrder = Sort.by(Sort.Direction.DESC, "lastSeen");
+            }
 
-        return issueRepository.findFilteredIssues(projectId, status, severity, difficulty, search, sortOrder)
-                .stream()
-                .map(issueMapper::toResponse)
-                .collect(Collectors.toList());
+            return issueRepository.findFilteredIssues(projectId, status, severity, difficulty, search, sortOrder)
+                    .stream()
+                    .map(issueMapper::toResponse)
+                    .collect(Collectors.toList());
+        }
     }
 
     @Override
@@ -140,6 +224,13 @@ public class IssueServiceImpl implements IssueService {
         // Increment views count on details request
         issue.setViews(issue.getViews() + 1);
         issueRepository.save(issue);
+
+        // Sync view increment to Elasticsearch
+        try {
+            issueDocumentRepository.save(issueMapper.toDocument(issue));
+        } catch (Exception e) {
+            log.error("Failed to index issue view increment in Elasticsearch: {}", e.getMessage());
+        }
         
         return issueMapper.toResponse(issue);
     }
@@ -151,6 +242,14 @@ public class IssueServiceImpl implements IssueService {
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found with ID: " + id));
         issue.setStatus(status);
         issueRepository.save(issue);
+
+        // Sync status to Elasticsearch
+        try {
+            issueDocumentRepository.save(issueMapper.toDocument(issue));
+        } catch (Exception e) {
+            log.error("Failed to sync issue status update to Elasticsearch: {}", e.getMessage());
+        }
+
         return issueMapper.toResponse(issue);
     }
 
@@ -164,6 +263,14 @@ public class IssueServiceImpl implements IssueService {
 
         issue.setAssignedTo(user);
         issueRepository.save(issue);
+
+        // Sync assignment to Elasticsearch
+        try {
+            issueDocumentRepository.save(issueMapper.toDocument(issue));
+        } catch (Exception e) {
+            log.error("Failed to sync issue assignment to Elasticsearch: {}", e.getMessage());
+        }
+
         return issueMapper.toResponse(issue);
     }
 

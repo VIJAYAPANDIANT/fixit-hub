@@ -28,5 +28,10 @@ public record ErrorRequest(
     IssueSeverity severity,
 
     @NotNull(message = "Difficulty is required")
-    IssueDifficulty difficulty
+    IssueDifficulty difficulty,
+
+    Integer languageId,
+    Integer frameworkId,
+    Integer categoryId,
+    java.util.List<Integer> tagIds
 ) {}
