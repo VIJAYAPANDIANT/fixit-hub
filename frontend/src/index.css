@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #f5f3ff;
+  --color-brand-100: #ede9fe;
+  --color-brand-500: #8b5cf6;
+  --color-brand-600: #7c3aed;
+  --color-brand-700: #6d28d9;
+  --color-brand-900: #4c1d95;
+
+  --color-accent-50: #f0fdf4;
+  --color-accent-500: #22c55e;
+  --color-accent-600: #16a34a;
+
+  --color-dark-50: #f8fafc;
+  --color-dark-100: #f1f5f9;
+  --color-dark-700: #334155;
+  --color-dark-800: #1e293b;
+  --color-dark-900: #0f172a;
+  --color-dark-950: #020617;
+}
+
+/* Custom global styles & micro-animations */
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 dark:bg-dark-950 dark:text-slate-100 transition-colors duration-300 antialiased selection:bg-brand-500 selection:text-white;
+    font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  code, pre {
+    font-family: 'Fira Code', 'Courier New', Courier, monospace;
+  }
+}
+
+/* Smooth custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-100 dark:bg-dark-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-dark-800 rounded-full hover:bg-slate-400 dark:hover:bg-dark-700 transition-colors;
+}
+
+/* Glassmorphism utility classes */
+.glass-panel {
+  @apply bg-white/70 dark:bg-dark-900/75 backdrop-blur-md border border-slate-200/50 dark:border-dark-800/50 shadow-sm;
+}
+
+.glass-panel-interactive {
+  @apply bg-white/70 dark:bg-dark-900/75 backdrop-blur-md border border-slate-200/50 dark:border-dark-800/50 shadow-sm hover:border-brand-500/30 dark:hover:border-brand-500/20 hover:shadow-md hover:shadow-brand-500/5 transition-all duration-300;
+}
+
+.text-gradient {
+  @apply bg-gradient-to-r from-brand-500 via-brand-600 to-indigo-500 bg-clip-text text-transparent;
+}

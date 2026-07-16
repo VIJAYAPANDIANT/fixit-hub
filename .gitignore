@@ -1,0 +1,11 @@
+node_modules/
+dist/
+target/
+.tmp/
+*.log
+.gemini/
+.agents/
+.idea/
+.vscode/
+*.class
+*.tsbuildinfo
