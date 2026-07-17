@@ -19,7 +19,13 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
     
     Optional<Issue> findByProjectIdAndFingerprint(UUID projectId, String fingerprint);
 
-    @Query("SELECT i FROM Issue i WHERE i.project.id = :projectId " +
+    @Query("SELECT DISTINCT i FROM Issue i " +
+           "LEFT JOIN FETCH i.project " +
+           "LEFT JOIN FETCH i.language " +
+           "LEFT JOIN FETCH i.framework " +
+           "LEFT JOIN FETCH i.category " +
+           "LEFT JOIN FETCH i.assignedTo " +
+           "WHERE i.project.id = :projectId " +
            "AND (:status IS NULL OR i.status = :status) " +
            "AND (:severity IS NULL OR i.severity = :severity) " +
            "AND (:difficulty IS NULL OR i.difficulty = :difficulty) " +

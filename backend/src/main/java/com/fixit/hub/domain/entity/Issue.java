@@ -85,6 +85,7 @@ public class Issue {
         joinColumns = @JoinColumn(name = "error_id"),
         inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
+    @org.hibernate.annotations.BatchSize(size = 50)
     private java.util.Set<Tag> tags;
 
     @ManyToOne(fetch = FetchType.LAZY)

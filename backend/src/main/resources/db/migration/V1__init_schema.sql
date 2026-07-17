@@ -21,13 +21,6 @@ $$ language 'plpgsql';
 -- Lookup & Identity Tables
 -- =========================================================================
 
--- Roles
-CREATE TABLE roles (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) UNIQUE NOT NULL,
-    description VARCHAR(255)
-);
-
 -- Users
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -35,7 +28,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
     avatar_url VARCHAR(500),
-    role_id INT REFERENCES roles(id) ON DELETE RESTRICT,
+    role VARCHAR(50) NOT NULL,
     status VARCHAR(20) DEFAULT 'ACTIVE' NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -227,8 +220,8 @@ CREATE TABLE admin_logs (
 -- PERFORMANCE TUNING INDEXES
 -- =========================================================================
 
--- Foreign Key indexing to prevent nested loop table scans on joins
-CREATE INDEX idx_users_role ON users(role_id);
+-- Indexes for performance
+CREATE INDEX idx_users_role ON users(role);
 CREATE INDEX idx_frameworks_language ON frameworks(language_id);
 CREATE INDEX idx_errors_language ON errors(language_id);
 CREATE INDEX idx_errors_framework ON errors(framework_id);

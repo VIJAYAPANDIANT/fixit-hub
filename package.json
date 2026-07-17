@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "apps/web",
+    "frontend",
     "apps/api",
     "packages/*"
   ],
   "scripts": {
-    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:web": "npm run dev --workspace=frontend",
     "dev:api": "npm run dev --workspace=apps/api",
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
     "build": "npm run build --workspaces",

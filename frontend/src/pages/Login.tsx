@@ -74,10 +74,11 @@ export const Login: React.FC = () => {
         <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
           {isRegister && (
             <div>
-              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">NAME</label>
+              <label htmlFor="reg-name" className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">NAME</label>
               <div className="relative">
                 <UserIcon className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
                 <input
+                  id="reg-name"
                   type="text"
                   required
                   value={name}
@@ -90,10 +91,11 @@ export const Login: React.FC = () => {
           )}
 
           <div>
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">EMAIL ADDRESS</label>
+            <label htmlFor="email" className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">EMAIL ADDRESS</label>
             <div className="relative">
               <Mail className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
               <input
+                id="email"
                 type="email"
                 required
                 value={email}
@@ -106,10 +108,11 @@ export const Login: React.FC = () => {
 
           {!isRegister && (
             <div>
-              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">PASSWORD</label>
+              <label htmlFor="password" className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">PASSWORD</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
                 <input
+                  id="password"
                   type="password"
                   required
                   value={password}
@@ -123,8 +126,9 @@ export const Login: React.FC = () => {
 
           {isRegister && (
             <div>
-              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">ROLE</label>
+              <label htmlFor="reg-role" className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">ROLE</label>
               <select
+                id="reg-role"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-dark-800 bg-white/50 dark:bg-dark-900/50 focus:outline-none focus:ring-2 focus:ring-brand-500 transition"

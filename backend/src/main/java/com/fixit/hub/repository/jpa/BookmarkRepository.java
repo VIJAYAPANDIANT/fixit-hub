@@ -15,4 +15,7 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, UUID> {
     List<Bookmark> findByUser(User user);
     Optional<Bookmark> findByUserAndIssue(User user, Issue issue);
     boolean existsByUserAndIssue(User user, Issue issue);
+
+    @org.springframework.data.jpa.repository.Query("SELECT b.issue.id FROM Bookmark b WHERE b.user = :user")
+    List<UUID> findBookmarkedIssueIdsByUser(@org.springframework.data.repository.query.Param("user") User user);
 }

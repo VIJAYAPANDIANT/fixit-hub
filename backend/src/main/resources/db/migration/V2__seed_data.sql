@@ -3,13 +3,7 @@
 -- TARGET DATABASE: PostgreSQL 15+
 -- =========================================================================
 
--- 1. Seed Roles
-INSERT INTO roles (name, description) VALUES
-('OWNER', 'Organization account owner with billing and member management controls'),
-('ADMIN', 'Full workspace administrative access'),
-('DEVELOPER', 'Can read issues, write comments, request AI fixes, and post solutions'),
-('QA', 'Can report issues, write comments, and verify resolved statuses'),
-('SUPPORT', 'Read-only dashboard access to communicate issues to clients');
+
 
 -- 2. Seed Programming Languages
 INSERT INTO programming_languages (name, slug) VALUES
@@ -45,8 +39,8 @@ INSERT INTO tags (name, slug) VALUES
 ('ProductionCrash', 'prod-crash');
 
 -- 6. Seed Default Administrator (Bcrypt Hash for 'adminpassword')
-INSERT INTO users (email, password_hash, name, avatar_url, role_id, status) VALUES
-('admin@fixit.hub', '$2a$12$N9qo8uLOqp.Pshw23wE.VOnBw98127qYkG3yOQf1F.27uA1S4Yy2G', 'Global Admin', 'https://api.dicebear.com/7.x/bottts/svg?seed=admin', (SELECT id FROM roles WHERE name = 'ADMIN'), 'ACTIVE');
+INSERT INTO users (email, password_hash, name, avatar_url, role, status) VALUES
+('admin@fixit.hub', '$2a$12$N9qo8uLOqp.Pshw23wE.VOnBw98127qYkG3yOQf1F.27uA1S4Yy2G', 'Global Admin', 'https://api.dicebear.com/7.x/bottts/svg?seed=admin', 'ADMIN', 'ACTIVE');
 
 -- 7. Seed Sample Errors
 INSERT INTO errors (id, project_id, fingerprint, title, message, stacktrace, environment, release_version, language_id, framework_id, category_id, user_id, status, severity, occurrences_count) VALUES

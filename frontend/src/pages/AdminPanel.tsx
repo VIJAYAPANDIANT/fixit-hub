@@ -67,8 +67,9 @@ export const AdminPanel: React.FC = () => {
 
           <form onSubmit={handleRegisterUser} className="space-y-3">
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">DEVELOPER NAME</label>
+              <label htmlFor="reg-dev-name" className="text-xs font-bold text-slate-400 block mb-1">DEVELOPER NAME</label>
               <input 
+                id="reg-dev-name"
                 type="text" 
                 required
                 placeholder="Vijayapandian T"
@@ -78,8 +79,9 @@ export const AdminPanel: React.FC = () => {
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">EMAIL ADDRESS</label>
+              <label htmlFor="reg-dev-email" className="text-xs font-bold text-slate-400 block mb-1">EMAIL ADDRESS</label>
               <input 
+                id="reg-dev-email"
                 type="email" 
                 required
                 placeholder="v.pandian@fixit.hub"
@@ -89,8 +91,9 @@ export const AdminPanel: React.FC = () => {
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">ACCESS ROLE</label>
+              <label htmlFor="reg-dev-role" className="text-xs font-bold text-slate-400 block mb-1">ACCESS ROLE</label>
               <select 
+                id="reg-dev-role"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 className="w-full text-sm px-3 py-2 rounded-xl bg-slate-100 dark:bg-dark-800 focus:outline-none"

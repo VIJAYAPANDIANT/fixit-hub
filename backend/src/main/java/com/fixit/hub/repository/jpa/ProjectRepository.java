@@ -9,5 +9,6 @@ import java.util.UUID;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, UUID> {
+    @org.springframework.cache.annotation.Cacheable(value = "projectsByDsn", key = "#dsnKey")
     Optional<Project> findByDsnKey(String dsnKey);
 }

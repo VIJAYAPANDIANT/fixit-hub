@@ -65,8 +65,9 @@ export const Home: React.FC = () => {
 
       <div className="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-dark-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         <div>
-          <label className="text-xs font-bold text-slate-400 block mb-1">SEARCH KEYWORD</label>
+          <label htmlFor="home-search" className="text-xs font-bold text-slate-400 block mb-1">SEARCH KEYWORD</label>
           <input 
+            id="home-search"
             type="text" 
             placeholder="Type or message..." 
             value={search}
@@ -76,8 +77,9 @@ export const Home: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-xs font-bold text-slate-400 block mb-1">STATUS</label>
+          <label htmlFor="home-status" className="text-xs font-bold text-slate-400 block mb-1">STATUS</label>
           <select 
+            id="home-status"
             value={status} 
             onChange={(e) => setStatus(e.target.value as IssueStatus | '')}
             className="w-full text-sm px-3 py-2 rounded-xl bg-slate-100 dark:bg-dark-800 focus:outline-none focus:ring-2 focus:ring-brand-500 transition cursor-pointer"
@@ -90,8 +92,9 @@ export const Home: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-xs font-bold text-slate-400 block mb-1">SEVERITY</label>
+          <label htmlFor="home-severity" className="text-xs font-bold text-slate-400 block mb-1">SEVERITY</label>
           <select 
+            id="home-severity"
             value={severity} 
             onChange={(e) => setSeverity(e.target.value as IssueSeverity | '')}
             className="w-full text-sm px-3 py-2 rounded-xl bg-slate-100 dark:bg-dark-800 focus:outline-none focus:ring-2 focus:ring-brand-500 transition cursor-pointer"
@@ -105,8 +108,9 @@ export const Home: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-xs font-bold text-slate-400 block mb-1">DIFFICULTY</label>
+          <label htmlFor="home-difficulty" className="text-xs font-bold text-slate-400 block mb-1">DIFFICULTY</label>
           <select 
+            id="home-difficulty"
             value={difficulty} 
             onChange={(e) => setDifficulty(e.target.value as IssueDifficulty | '')}
             className="w-full text-sm px-3 py-2 rounded-xl bg-slate-100 dark:bg-dark-800 focus:outline-none focus:ring-2 focus:ring-brand-500 transition cursor-pointer"
@@ -119,8 +123,9 @@ export const Home: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-xs font-bold text-slate-400 block mb-1">SORT BY</label>
+          <label htmlFor="home-sort" className="text-xs font-bold text-slate-400 block mb-1">SORT BY</label>
           <select 
+            id="home-sort"
             value={sortBy} 
             onChange={(e) => setSortBy(e.target.value)}
             className="w-full text-sm px-3 py-2 rounded-xl bg-slate-100 dark:bg-dark-800 focus:outline-none focus:ring-2 focus:ring-brand-500 transition cursor-pointer"

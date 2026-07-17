@@ -4,9 +4,9 @@
   "private": true,
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "node ../../node_modules/typescript/lib/tsc.js",
     "start": "node dist/server.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts"
+    "dev": "node ../../node_modules/ts-node-dev/lib/bin.js --respawn --transpile-only src/server.ts"
   },
   "dependencies": {
     "@clickhouse/client": "^0.2.1",

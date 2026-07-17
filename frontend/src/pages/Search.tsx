@@ -65,8 +65,9 @@ export const Search: React.FC = () => {
             <h3 className="font-bold text-sm text-slate-500 tracking-wider">TAXONOMY FILTERS</h3>
 
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">LANGUAGE</label>
+              <label htmlFor="filter-lang" className="text-xs font-bold text-slate-400 block mb-1">LANGUAGE</label>
               <select 
+                id="filter-lang"
                 value={languageId} 
                 onChange={(e) => setLanguageId(e.target.value)}
                 className="w-full text-sm px-3 py-2 rounded-xl bg-slate-100 dark:bg-dark-800 focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
@@ -77,8 +78,9 @@ export const Search: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">FRAMEWORK</label>
+              <label htmlFor="filter-framework" className="text-xs font-bold text-slate-400 block mb-1">FRAMEWORK</label>
               <select 
+                id="filter-framework"
                 value={frameworkId} 
                 onChange={(e) => setFrameworkId(e.target.value)}
                 className="w-full text-sm px-3 py-2 rounded-xl bg-slate-100 dark:bg-dark-800 focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
@@ -89,8 +91,9 @@ export const Search: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">CATEGORY</label>
+              <label htmlFor="filter-category" className="text-xs font-bold text-slate-400 block mb-1">CATEGORY</label>
               <select 
+                id="filter-category"
                 value={categoryId} 
                 onChange={(e) => setCategoryId(e.target.value)}
                 className="w-full text-sm px-3 py-2 rounded-xl bg-slate-100 dark:bg-dark-800 focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
@@ -102,8 +105,8 @@ export const Search: React.FC = () => {
 
             <div className="pt-2 border-t border-slate-200 dark:border-dark-800 space-y-3">
               <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">STATUS</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="w-full text-sm px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800">
+                <label htmlFor="filter-status" className="text-xs font-bold text-slate-400 block mb-1">STATUS</label>
+                <select id="filter-status" value={status} onChange={(e) => setStatus(e.target.value as any)} className="w-full text-sm px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800">
                   <option value="">All Statuses</option>
                   <option value="UNRESOLVED">UNRESOLVED</option>
                   <option value="IN_PROGRESS">IN PROGRESS</option>
@@ -111,8 +114,8 @@ export const Search: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">SEVERITY</label>
-                <select value={severity} onChange={(e) => setSeverity(e.target.value as any)} className="w-full text-sm px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800">
+                <label htmlFor="filter-severity" className="text-xs font-bold text-slate-400 block mb-1">SEVERITY</label>
+                <select id="filter-severity" value={severity} onChange={(e) => setSeverity(e.target.value as any)} className="w-full text-sm px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800">
                   <option value="">All Severities</option>
                   <option value="CRITICAL">CRITICAL</option>
                   <option value="HIGH">HIGH</option>

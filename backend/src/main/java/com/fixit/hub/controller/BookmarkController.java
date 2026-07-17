@@ -1,10 +1,7 @@
 package com.fixit.hub.controller;
 
-import com.fixit.hub.domain.entity.Bookmark;
-import com.fixit.hub.domain.entity.Issue;
 import com.fixit.hub.domain.entity.User;
-import com.fixit.hub.repository.jpa.BookmarkRepository;
-import com.fixit.hub.repository.jpa.IssueRepository;
+import com.fixit.hub.service.BookmarkService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/bookmarks")
@@ -24,8 +20,7 @@ import java.util.stream.Collectors;
 @Tag(name = "Bookmarks", description = "Endpoints for managing user bookmarked errors")
 public class BookmarkController {
 
-    private final BookmarkRepository bookmarkRepository;
-    private final IssueRepository issueRepository;
+    private final BookmarkService bookmarkService;
 
     @PostMapping("/{issueId}")
     @Operation(summary = "Bookmark an issue")
@@ -33,11 +28,7 @@ public class BookmarkController {
             @PathVariable UUID issueId,
             @AuthenticationPrincipal User user
     ) {
-        Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new IllegalArgumentException("Issue not found"));
-        if (!bookmarkRepository.existsByUserAndIssue(user, issue)) {
-            bookmarkRepository.save(Bookmark.builder().user(user).issue(issue).build());
-        }
+        bookmarkService.bookmarkIssue(issueId, user);
         return ResponseEntity.ok().build();
     }
 
@@ -47,19 +38,13 @@ public class BookmarkController {
             @PathVariable UUID issueId,
             @AuthenticationPrincipal User user
     ) {
-        Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new IllegalArgumentException("Issue not found"));
-        bookmarkRepository.findByUserAndIssue(user, issue)
-                .ifPresent(bookmarkRepository::delete);
+        bookmarkService.unbookmarkIssue(issueId, user);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping
     @Operation(summary = "List all bookmarked issue IDs")
     public ResponseEntity<List<String>> getBookmarkedIssueIds(@AuthenticationPrincipal User user) {
-        List<String> ids = bookmarkRepository.findByUser(user).stream()
-                .map(b -> b.getIssue().getId().toString())
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ids);
+        return ResponseEntity.ok(bookmarkService.getBookmarkedIssueIds(user));
     }
 }

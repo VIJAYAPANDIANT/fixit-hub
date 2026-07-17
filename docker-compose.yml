@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   postgres:
@@ -7,11 +7,13 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: fixit_metadata
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgrespassword}
+      POSTGRES_DB: ${DB_NAME:-fixit_metadata}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fixit-network
 
   redis:
     image: redis:7-alpine
@@ -20,6 +22,8 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - fixit-network
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
@@ -35,8 +39,54 @@ services:
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     volumes:
       - es_data:/usr/share/elasticsearch/data
+    networks:
+      - fixit-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fixit-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-fixit_metadata}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgrespassword}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - ELASTICSEARCH_URIS=${ELASTICSEARCH_URIS:-http://elasticsearch:9200}
+      - security.jwt.secret-key=${JWT_SECRET}
+      - security.jwt.expiration-ms=${JWT_EXPIRATION_MS}
+      - integrations.gemini.api-key=${GEMINI_API_KEY}
+      - integrations.gemini.model=${GEMINI_MODEL}
+      - PORT=${PORT:-8080}
+    depends_on:
+      - postgres
+      - redis
+      - elasticsearch
+    networks:
+      - fixit-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fixit-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - fixit-network
 
 volumes:
   postgres_data:
   redis_data:
   es_data:
+
+networks:
+  fixit-network:
+    driver: bridge
