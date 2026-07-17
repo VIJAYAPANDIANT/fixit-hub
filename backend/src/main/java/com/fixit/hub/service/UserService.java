@@ -7,5 +7,6 @@ import java.util.UUID;
 
 public interface UserService {
     List<UserResponse> getAllUsers();
+
     UserResponse updateUserRole(UUID userId, UserRole role);
 }
