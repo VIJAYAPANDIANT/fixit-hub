@@ -4,12 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node node_modules/vite/bin/vite.js",
-    "build": "node node_modules/typescript/lib/tsc.js -b && node node_modules/vite/bin/vite.js build",
-    "lint": "node node_modules/oxlint/bin/oxlint",
-    "test": "node node_modules/vitest/vitest.mjs run",
-    "test:watch": "node node_modules/vitest/vitest.mjs",
-    "preview": "node node_modules/vite/bin/vite.js preview"
+    "dev": "node ../node_modules/vite/bin/vite.js",
+    "build": "node ../node_modules/typescript/lib/tsc.js -b && node ../node_modules/vite/bin/vite.js build",
+    "lint": "node ../node_modules/oxlint/bin/oxlint",
+    "test": "node ../node_modules/vitest/vitest.mjs run",
+    "test:watch": "node ../node_modules/vitest/vitest.mjs",
+    "preview": "node ../node_modules/vite/bin/vite.js preview"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.2",
