@@ -164,6 +164,14 @@ async function initializeDB() {
 
 // 3. API Handlers
 
+app.get('/', (req, res) => {
+  res.json({ status: 'healthy', message: 'Universal Error & Bug Resolution Hub API is running.' });
+});
+
+app.get('/api', (req, res) => {
+  res.json({ status: 'healthy', message: 'Universal Error & Bug Resolution Hub API is running.' });
+});
+
 // Get all projects
 app.get('/api/projects', async (req, res) => {
   try {
