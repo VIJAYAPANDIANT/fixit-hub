@@ -115,11 +115,12 @@ public class IssueServiceTest {
         when(issueRepository.existsById(issueId)).thenReturn(false);
 
         IssueResponse mockResponse = new IssueResponse(
-                issueId, "NullPointerException in Auth", "Null Pointer Exception",
+                issueId, projectId, "fp_fingerprint", "NullPointerException in Auth", "Null Pointer Exception",
                 "stacktrace goes here", "NPE in Authentication Service", "Root cause context",
                 "Verified fix description", "code snippet", IssueStatus.UNRESOLVED,
                 IssueSeverity.HIGH, IssueDifficulty.MODERATE, 0, 0,
-                null, null, null, Collections.emptySet(), null, null, null, 1
+                null, null, LocalDateTime.now(), LocalDateTime.now(), 1,
+                null, null, null, null, null, null, null, Collections.emptyList()
         );
 
         when(issueRepository.save(any(Issue.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -162,11 +163,12 @@ public class IssueServiceTest {
         when(issueMapper.toDocument(any(Issue.class))).thenReturn(new IssueDocument());
 
         IssueResponse mockResponse = new IssueResponse(
-                issueId, "NullPointerException in Auth", "Null Pointer Exception",
+                issueId, projectId, "fp_fingerprint", "NullPointerException in Auth", "Null Pointer Exception",
                 "stacktrace goes here", "NPE in Authentication Service", "Root cause context",
                 "Verified fix description", "code snippet", IssueStatus.UNRESOLVED,
                 IssueSeverity.HIGH, IssueDifficulty.MODERATE, 0, 0,
-                null, null, null, Collections.emptySet(), null, null, null, 1
+                null, null, LocalDateTime.now(), LocalDateTime.now(), 1,
+                null, null, null, null, null, null, null, Collections.emptyList()
         );
         when(issueMapper.toResponse(any(Issue.class))).thenReturn(mockResponse);
 
@@ -194,9 +196,11 @@ public class IssueServiceTest {
     @Test
     void testGetFilteredIssues_ElasticsearchSuccess() {
         IssueResponse mockResponse = new IssueResponse(
-                UUID.randomUUID(), "title", "msg", "trace", "desc", "root", "fix", "code",
+                UUID.randomUUID(), projectId, "fp_fingerprint", "title", "msg",
+                "trace", "desc", "root", "fix", "code",
                 IssueStatus.UNRESOLVED, IssueSeverity.HIGH, IssueDifficulty.MODERATE, 0, 0,
-                null, null, null, Collections.emptySet(), null, null, null, 1
+                null, null, LocalDateTime.now(), LocalDateTime.now(), 1,
+                null, null, null, null, null, null, null, Collections.emptyList()
         );
         IssueSearchResponse searchResponse = new IssueSearchResponse(List.of(mockResponse), 1L);
 
@@ -234,9 +238,11 @@ public class IssueServiceTest {
         )).thenReturn(List.of(existingIssue));
 
         IssueResponse mockResponse = new IssueResponse(
-                existingIssue.getId(), "DB fallback issue", "msg", "trace", "desc", "root", "fix", "code",
+                existingIssue.getId(), projectId, "fp_fingerprint", "DB fallback issue", "msg",
+                "trace", "desc", "root", "fix", "code",
                 IssueStatus.UNRESOLVED, IssueSeverity.HIGH, IssueDifficulty.MODERATE, 0, 0,
-                null, null, null, Collections.emptySet(), null, null, null, 1
+                null, null, LocalDateTime.now(), LocalDateTime.now(), 1,
+                null, null, null, null, null, null, null, Collections.emptyList()
         );
         when(issueMapper.toResponse(existingIssue)).thenReturn(mockResponse);
 

@@ -65,9 +65,11 @@ public class IssueControllerTest {
         issueId = UUID.randomUUID();
 
         mockIssueResponse = new IssueResponse(
-                issueId, "NullPointerException", "Message", "Trace", "Desc", "Cause",
-                "Fix", "Snippet", IssueStatus.UNRESOLVED, IssueSeverity.HIGH, IssueDifficulty.MODERATE,
-                0, 0, null, null, null, Collections.emptySet(), null, null, null, 1
+                issueId, projectId, "fp_fingerprint", "NullPointerException", "Message",
+                "Trace", "Desc", "Cause", "Fix", IssueStatus.UNRESOLVED,
+                IssueSeverity.HIGH, IssueDifficulty.MODERATE, 0, 0,
+                null, null, LocalDateTime.now(), LocalDateTime.now(), 1,
+                null, null, null, null, null, null, null, Collections.emptyList()
         );
 
         mockUser = User.builder()
