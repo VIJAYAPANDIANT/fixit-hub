@@ -2,6 +2,10 @@
 
 An AI-powered, self-hosted, real-time error tracking and exception monitoring system designed to help developers capture, diagnose, and resolve application bugs instantly.
 
+## 🌐 Live Deployments
+- **Frontend Dashboard**: [https://fixit-hub-api.vercel.app/](https://fixit-hub-api.vercel.app/)
+- **Backend API**: [https://fixit-hub-api-mqn6.vercel.app/](https://fixit-hub-api-mqn6.vercel.app/)
+
 ---
 
 ## 🏗️ Architecture & Data Flow
