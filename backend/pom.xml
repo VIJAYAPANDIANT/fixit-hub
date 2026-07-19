@@ -15,7 +15,7 @@
     <description>FixIt – Universal Error &amp; Bug Resolution Hub Backend</description>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>21</java.version>
         <springdoc.version>2.5.0</springdoc.version>
         <jjwt.version>0.12.5</jjwt.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>

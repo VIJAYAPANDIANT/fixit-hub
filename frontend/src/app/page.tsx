@@ -40,7 +40,7 @@ interface Analytics {
   os: { os: string; count: number }[];
 }
 
-const API_BASE = 'http://localhost:5002/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://fixit-hub-api-mqn6.vercel.app/api';
 
 export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
