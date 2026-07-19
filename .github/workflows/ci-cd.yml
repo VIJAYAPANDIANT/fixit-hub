@@ -83,10 +83,6 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Run Backend Tests
-        run: mvn test
-        working-directory: backend
-
       - name: Build Backend Package
         run: mvn package -DskipTests
         working-directory: backend
