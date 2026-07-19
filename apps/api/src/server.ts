@@ -479,6 +479,10 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('Fatal API Server Crash:', err);
-});
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error('Fatal API Server Crash:', err);
+  });
+}
+
+export default app;
