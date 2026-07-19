@@ -21,6 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.util.DigestUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -75,7 +76,7 @@ public class IssueServiceTest {
                 "code snippet",
                 IssueStatus.UNRESOLVED,
                 IssueSeverity.HIGH,
-                IssueDifficulty.MODERATE,
+                IssueDifficulty.MEDIUM,
                 null, null, null, null
         );
     }
@@ -116,9 +117,9 @@ public class IssueServiceTest {
 
         IssueResponse mockResponse = new IssueResponse(
                 issueId, projectId, "fp_fingerprint", "NullPointerException in Auth", "Null Pointer Exception",
-                "stacktrace goes here", "NPE in Authentication Service", "Root cause context",
-                "Verified fix description", "code snippet", IssueStatus.UNRESOLVED,
-                IssueSeverity.HIGH, IssueDifficulty.MODERATE, 0, 0,
+                "NPE in Authentication Service", "Root cause context", "Verified fix description",
+                "code snippet", IssueStatus.UNRESOLVED,
+                IssueSeverity.HIGH, IssueDifficulty.MEDIUM, 0, 0,
                 null, null, LocalDateTime.now(), LocalDateTime.now(), 1,
                 null, null, null, null, null, null, null, Collections.emptyList()
         );
@@ -164,9 +165,9 @@ public class IssueServiceTest {
 
         IssueResponse mockResponse = new IssueResponse(
                 issueId, projectId, "fp_fingerprint", "NullPointerException in Auth", "Null Pointer Exception",
-                "stacktrace goes here", "NPE in Authentication Service", "Root cause context",
-                "Verified fix description", "code snippet", IssueStatus.UNRESOLVED,
-                IssueSeverity.HIGH, IssueDifficulty.MODERATE, 0, 0,
+                "NPE in Authentication Service", "Root cause context", "Verified fix description",
+                "code snippet", IssueStatus.UNRESOLVED,
+                IssueSeverity.HIGH, IssueDifficulty.MEDIUM, 0, 0,
                 null, null, LocalDateTime.now(), LocalDateTime.now(), 1,
                 null, null, null, null, null, null, null, Collections.emptyList()
         );
@@ -197,20 +198,20 @@ public class IssueServiceTest {
     void testGetFilteredIssues_ElasticsearchSuccess() {
         IssueResponse mockResponse = new IssueResponse(
                 UUID.randomUUID(), projectId, "fp_fingerprint", "title", "msg",
-                "trace", "desc", "root", "fix", "code",
-                IssueStatus.UNRESOLVED, IssueSeverity.HIGH, IssueDifficulty.MODERATE, 0, 0,
+                "desc", "root", "fix", "code",
+                IssueStatus.UNRESOLVED, IssueSeverity.HIGH, IssueDifficulty.MEDIUM, 0, 0,
                 null, null, LocalDateTime.now(), LocalDateTime.now(), 1,
                 null, null, null, null, null, null, null, Collections.emptyList()
         );
-        IssueSearchResponse searchResponse = new IssueSearchResponse(List.of(mockResponse), 1L);
+        IssueSearchResponse searchResponse = new IssueSearchResponse(List.of(mockResponse), Collections.emptyList(), Collections.emptyList());
 
         when(issueSearchService.searchIssues(
                 eq(projectId), eq("search"), eq(IssueStatus.UNRESOLVED),
-                eq(IssueSeverity.HIGH), eq(IssueDifficulty.MODERATE), any(), any(), any(), any(), eq("popularity")
+                eq(IssueSeverity.HIGH), eq(IssueDifficulty.MEDIUM), any(), any(), any(), any(), eq("popularity")
         )).thenReturn(searchResponse);
 
         List<IssueResponse> results = issueService.getFilteredIssues(
-                projectId, IssueStatus.UNRESOLVED, IssueSeverity.HIGH, IssueDifficulty.MODERATE, "search", "popularity"
+                projectId, IssueStatus.UNRESOLVED, IssueSeverity.HIGH, IssueDifficulty.MEDIUM, "search", "popularity"
         );
 
         assertThat(results).hasSize(1);
@@ -229,25 +230,25 @@ public class IssueServiceTest {
                 .title("DB fallback issue")
                 .status(IssueStatus.UNRESOLVED)
                 .severity(IssueSeverity.HIGH)
-                .difficulty(IssueDifficulty.MODERATE)
+                .difficulty(IssueDifficulty.MEDIUM)
                 .build();
 
         when(issueRepository.findFilteredIssues(
-                eq(projectId), eq(IssueStatus.UNRESOLVED), eq(IssueSeverity.HIGH), eq(IssueDifficulty.MODERATE),
+                eq(projectId), eq(IssueStatus.UNRESOLVED), eq(IssueSeverity.HIGH), eq(IssueDifficulty.MEDIUM),
                 eq("search"), any(Sort.class)
         )).thenReturn(List.of(existingIssue));
 
         IssueResponse mockResponse = new IssueResponse(
                 existingIssue.getId(), projectId, "fp_fingerprint", "DB fallback issue", "msg",
-                "trace", "desc", "root", "fix", "code",
-                IssueStatus.UNRESOLVED, IssueSeverity.HIGH, IssueDifficulty.MODERATE, 0, 0,
+                "desc", "root", "fix", "code",
+                IssueStatus.UNRESOLVED, IssueSeverity.HIGH, IssueDifficulty.MEDIUM, 0, 0,
                 null, null, LocalDateTime.now(), LocalDateTime.now(), 1,
                 null, null, null, null, null, null, null, Collections.emptyList()
         );
         when(issueMapper.toResponse(existingIssue)).thenReturn(mockResponse);
 
         List<IssueResponse> results = issueService.getFilteredIssues(
-                projectId, IssueStatus.UNRESOLVED, IssueSeverity.HIGH, IssueDifficulty.MODERATE, "search", "popularity"
+                projectId, IssueStatus.UNRESOLVED, IssueSeverity.HIGH, IssueDifficulty.MEDIUM, "search", "popularity"
         );
 
         assertThat(results).hasSize(1);

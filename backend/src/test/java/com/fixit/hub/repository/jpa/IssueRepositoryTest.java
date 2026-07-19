@@ -54,7 +54,7 @@ public class IssueRepositoryTest {
                 .description("UserService threw NPE")
                 .status(IssueStatus.UNRESOLVED)
                 .severity(IssueSeverity.HIGH)
-                .difficulty(IssueDifficulty.MODERATE)
+                .difficulty(IssueDifficulty.MEDIUM)
                 .firstSeen(LocalDateTime.now())
                 .lastSeen(LocalDateTime.now())
                 .popularity(5)

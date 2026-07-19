@@ -67,7 +67,7 @@ public class IssueControllerTest {
         mockIssueResponse = new IssueResponse(
                 issueId, projectId, "fp_fingerprint", "NullPointerException", "Message",
                 "Trace", "Desc", "Cause", "Fix", IssueStatus.UNRESOLVED,
-                IssueSeverity.HIGH, IssueDifficulty.MODERATE, 0, 0,
+                IssueSeverity.HIGH, IssueDifficulty.MEDIUM, 0, 0,
                 null, null, LocalDateTime.now(), LocalDateTime.now(), 1,
                 null, null, null, null, null, null, null, Collections.emptyList()
         );
@@ -133,7 +133,7 @@ public class IssueControllerTest {
     void testAddComment() throws Exception {
         CommentRequest request = new CommentRequest("This is a helpful test comment");
         CommentResponse mockCommentResponse = new CommentResponse(
-                UUID.randomUUID(), "This is a helpful test comment", "Dev User", LocalDateTime.now()
+                UUID.randomUUID(), issueId, mockUser.getId(), "Dev User", "This is a helpful test comment", LocalDateTime.now()
         );
 
         when(issueService.addComment(eq(issueId), eq(mockUser.getId()), eq("This is a helpful test comment")))
@@ -149,7 +149,7 @@ public class IssueControllerTest {
     @Test
     void testGetComments() throws Exception {
         CommentResponse mockCommentResponse = new CommentResponse(
-                UUID.randomUUID(), "Comment content", "Dev User", LocalDateTime.now()
+                UUID.randomUUID(), issueId, mockUser.getId(), "Dev User", "Comment content", LocalDateTime.now()
         );
         when(issueService.getComments(issueId)).thenReturn(List.of(mockCommentResponse));
 
@@ -173,16 +173,14 @@ public class IssueControllerTest {
     @Test
     void testGetAIDiagnosis() throws Exception {
         AIAnalysisResponse mockAIResponse = new AIAnalysisResponse(
-                "NullPointerException analysis",
-                List.of("Check for null arguments"),
-                "String name = user.getName()",
-                "Ensure user object is not null"
+                "NullPointerException analysis", "Explanation here", "Ensure user object is not null",
+                "Check for null arguments", "String name = user.getName()", "Best practices here", 0.95
         );
         when(aiService.getAIDiagnosis(eq(issueId), any())).thenReturn(mockAIResponse);
 
         mockMvc.perform(post("/api/issues/{id}/ai-diagnose", issueId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.analysis").value("NullPointerException analysis"));
+                .andExpect(jsonPath("$.title").value("NullPointerException analysis"));
     }
 
     @Test
