@@ -25,7 +25,7 @@ describe('Login Page', () => {
     );
 
     expect(screen.getByText('Welcome to FixIt Hub')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('developer@fixit.hub')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('developer@gmail.com')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('••••••••')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
@@ -37,7 +37,7 @@ describe('Login Page', () => {
       </MemoryRouter>
     );
 
-    const emailInput = screen.getByPlaceholderText('developer@fixit.hub');
+    const emailInput = screen.getByPlaceholderText('developer@gmail.com');
     const passwordInput = screen.getByPlaceholderText('••••••••');
     const submitButton = screen.getByRole('button', { name: /sign in/i });
 
@@ -71,7 +71,7 @@ describe('Login Page', () => {
     expect(screen.getByPlaceholderText('John Doe')).toBeInTheDocument();
 
     const nameInput = screen.getByPlaceholderText('John Doe');
-    const emailInput = screen.getByPlaceholderText('developer@fixit.hub');
+    const emailInput = screen.getByPlaceholderText('developer@gmail.com');
     const submitButton = screen.getByRole('button', { name: /register/i });
 
     fireEvent.change(nameInput, { target: { value: 'John Doe' } });
