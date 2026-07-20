@@ -5,7 +5,7 @@ import {
 } from '../types';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://fixit-hub-api-mqn6.vercel.app/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -68,7 +68,7 @@ api.interceptors.response.use(
       }
 
       try {
-        const response = await axios.post('/api/auth/refresh', { refreshToken });
+        const response = await axios.post(`${api.defaults.baseURL}/auth/refresh`, { refreshToken });
         const { accessToken, refreshToken: newRefreshToken } = response.data;
 
         localStorage.setItem('token', accessToken);
