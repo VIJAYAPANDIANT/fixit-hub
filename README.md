@@ -157,3 +157,38 @@ From the root directory:
 npm run dev:web
 ```
 The client dashboard will be available at `http://localhost:5173`.
+
+---
+
+## ☁️ Cloud Deployment Guide
+
+### 🖤 1. Deploying Frontend to Vercel
+1. Connect your GitHub repository `VIJAYAPANDIANT/fixit-hub` to **[Vercel](https://vercel.com/)**.
+2. Select **Root Directory** as `./frontend` (or root with Framework Preset: **Vite**).
+3. Set the Environment Variable under Project Settings:
+   - **`VITE_API_URL`**: `https://your-backend-service.onrender.com/api` (or your live backend API URL).
+4. Click **Deploy**. Vercel will automatically build and publish your SPA.
+
+---
+
+### 🟣 2. Deploying Spring Boot / Docker Backend to Render
+1. Log in to **[Render.com](https://render.com/)** and click **New +** → **Web Service**.
+2. Connect your GitHub repository `VIJAYAPANDIANT/fixit-hub`.
+3. Set **Root Directory** to `backend` and select runtime **Docker**.
+4. Configure Database Environment Variables (e.g., using [Neon PostgreSQL](https://neon.tech/)):
+   - **`SPRING_DATASOURCE_URL`**: `jdbc:postgresql://ep-xxxx.aws.neon.tech/neondb?sslmode=require`
+   - **`SPRING_DATASOURCE_USERNAME`**: `neondb_owner`
+   - **`SPRING_DATASOURCE_PASSWORD`**: `your-neon-password`
+5. Click **Create Web Service**. Render will automatically build the Docker container and keep your Spring Boot service running continuously.
+
+---
+
+## 🔄 CI/CD Automation Pipeline
+
+The repository includes a GitHub Actions workflow configured in [.github/workflows/ci-cd.yml](file:///c:/Universal%20Error%20&%20Bug%20Resolution%20Hub/.github/workflows/ci-cd.yml):
+
+- **Automated Testing**: Executes frontend unit tests with Vitest on every `git push`.
+- **Build Verification**: Validates TypeScript compilation and Maven packaging for backend code.
+- **Container Registry Sync**: Builds Docker images for frontend and backend and publishes them to GitHub Container Registry (`ghcr.io`).
+- **Security Scanning**: Scans container images for vulnerabilities using Trivy.
+
