@@ -60,7 +60,7 @@ interface IssueDetails {
   latest_events: ClickHouseEvent[];
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://fixit-hub-api-mqn6.vercel.app/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export default function IssuePage({ params }: { params: { issueId: string } }) {
   const [issue, setIssue] = useState<IssueDetails | null>(null);
