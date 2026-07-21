@@ -150,7 +150,7 @@ jobs:
   deploy:
     name: Deploy to Production
     needs: docker-build-push
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.PROD_SERVER_HOST != ''
     runs-on: ubuntu-latest
     steps:
       - name: Execute Remote SSH Commands to Deploy
@@ -168,9 +168,8 @@ jobs:
 
   notify:
     name: Notify Status
-    needs: [lint-and-scan, test-and-build, docker-build-push, deploy]
-    runs-on: ubuntu-latest
-    if: always()
+    needs: [lint-and-scan, test-and-build, docker-build-push]
+    if: always() && secrets.SLACK_WEBHOOK != ''
     steps:
       - name: Slack Notification on Success
         if: ${{ needs.deploy.result == 'success' }}
