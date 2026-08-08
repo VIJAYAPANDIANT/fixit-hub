@@ -1,6 +1,16 @@
 # FixIt Hub 🛠️ (Universal Error & Bug Resolution Hub)
 
-An AI-powered, self-hosted, real-time error tracking and exception monitoring system designed to help developers capture, diagnose, and resolve application bugs instantly.
+[![CI/CD Build & Test](https://github.com/VIJAYAPANDIANT/fixit-hub/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/VIJAYAPANDIANT/fixit-hub/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Java Version](https://img.shields.io/badge/Java-21-blue.svg?logo=openjdk&logoColor=white)](https://openjdk.org/)
+[![Go Version](https://img.shields.io/badge/Go-1.21-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
+[![Node.js Version](https://img.shields.io/badge/Node.js-20.x-339933.svg?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.x-6DB33F.svg?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![React](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=white)](https://react.dev/)
+
+An AI-powered, self-hosted, real-time error tracking and exception monitoring system designed to help developers capture, diagnose, and resolve application bugs instantly. FixIt Hub combines high-performance log ingestion, automated issue deduplication, Elasticsearch-powered search, and Google Gemini AI diagnostics to provide instant root-cause analysis and actionable resolution steps.
+
+---
 
 ## 🌐 Live Deployments
 - **Frontend Dashboard**: [https://fixit-hub-api.vercel.app/](https://fixit-hub-api.vercel.app/)
@@ -10,7 +20,17 @@ An AI-powered, self-hosted, real-time error tracking and exception monitoring sy
 
 ## 🏗️ Architecture & Data Flow
 
-FixIt Hub implements two main data flow paths: a **High-Throughput Analytics & AI Diagnostics Path** for asynchronous exception streams, and a **Direct Management REST Path** for full-text search, user operations, settings, and dashboards.
+FixIt Hub implements two distinct data paths to achieve maximum throughput for log events while maintaining high responsiveness for dashboard queries:
+
+1. **High-Throughput Analytics & AI Diagnostics Path (Asynchronous)**:
+   - **Ingestion**: Client SDKs target the Go Ingestion daemon on port `5001`. The daemon records raw exception payloads directly into **ClickHouse** for high-volume analytical queries.
+   - **Processing**: Simultaneously, a deduplication task is enqueued onto a **Redis Queue (`queue:events`)**.
+   - **Diagnostics**: A Node.js event worker pops tasks from the queue, generates issue deduplication fingerprints, invokes the **Google Gemini AI API** for root-cause analyses, and updates the core **PostgreSQL** metadata database.
+
+2. **Direct Management REST Path (Synchronous)**:
+   - **Core Backend**: Built on Spring Boot 3, providing JWT-based authentication, user permissions, issue lifecycle management, bookmarking, notifications, and settings.
+   - **Search**: Fully integrates with **Elasticsearch** for low-latency, full-text log search.
+   - **Cache**: Employs **Redis Cache** for frequently read dashboards and session lookups.
 
 ```mermaid
 flowchart TD
@@ -22,7 +42,7 @@ flowchart TD
         IngestGo[Go Ingestion Service<br>Port 5001]
         CH[(ClickHouse<br>Event Storage)]
         RedisQ[(Redis Queue<br>queue:events)]
-        WorkerNode[Node.js Event Worker<br>Port 5002]
+        WorkerNode[Node.js Event Worker<br>Port 5002 / Worker]
         Gemini[Google Gemini AI API]
     end
 
@@ -57,13 +77,14 @@ flowchart TD
 
 ## 📂 Repository Layout
 
-The project is structured as a monorepo containing multiple key workspaces and service layers:
+This repository is organized as a monorepo containing multiple key workspaces and service layers:
 
-- **[frontend/](file:///c:/Universal%20Error%20&%20Bug%20Resolution%20Hub/frontend)**: A React-based SPA dashboard built with React 19, Vite, TypeScript, and TailwindCSS v4.
-- **[backend/](file:///c:/Universal%20Error%20&%20Bug%20Resolution%20Hub/backend)**: The core management service built with Spring Boot 3, Java 21, Spring Security (JWT), and Flyway database migrations.
-- **[apps/ingestion/](file:///c:/Universal%20Error%20&%20Bug%20Resolution%20Hub/apps/ingestion)**: A lightweight, high-performance Go ingestion daemon that records raw exception logs to ClickHouse and publishes job messages to Redis.
-- **[apps/api/](file:///c:/Universal%20Error%20&%20Bug%20Resolution%20Hub/apps/api)**: Node.js worker and API container responsible for processing enqueued ingestion jobs, calculating issue deduplication fingerprints, and invoking Gemini AI for root-cause analyses.
-- **[docker-compose.yml](file:///c:/Universal%20Error%20&%20Bug%20Resolution%20Hub/docker-compose.yml)**: Configures and spins up the multi-container Docker stack including PostgreSQL, Redis, Elasticsearch, the Java backend, and the React frontend.
+- **[frontend/](file:///c:/Fixhub/frontend)**: A React-based SPA dashboard built with React 19, Vite, TypeScript, and TailwindCSS v4.
+- **[backend/](file:///c:/Fixhub/backend)**: The core management service built with Spring Boot 3, Java 21, Spring Security (JWT), and Flyway database migrations.
+- **[apps/ingestion/](file:///c:/Fixhub/apps/ingestion)**: A lightweight, high-performance Go ingestion daemon that records raw exception logs to ClickHouse and publishes job messages to Redis.
+- **[apps/api/](file:///c:/Fixhub/apps/api)**: Node.js worker and API container responsible for processing enqueued ingestion jobs, calculating issue deduplication fingerprints, and invoking Gemini AI for root-cause analyses.
+- **[docker-compose.yml](file:///c:/Fixhub/docker-compose.yml)**: Configures and spins up the multi-container Docker stack including PostgreSQL, Redis, Elasticsearch, the Java backend, and the React frontend.
+- **[.github/workflows/ci-cd.yml](file:///c:/Fixhub/.github/workflows/ci-cd.yml)**: The automated CI/CD pipeline definition for test execution, compilation validation, container compilation, security scans, and package distribution.
 
 ---
 
@@ -81,23 +102,37 @@ The project is structured as a monorepo containing multiple key workspaces and s
 
 ## ⚙️ Environment Configuration
 
-Define a `.env` file at the root of the workspace. A template is provided in [.env](file:///c:/Universal%20Error%20&%20Bug%20Resolution%20Hub/.env):
+Define a `.env` file at the root of the workspace. A template is provided in [.env](file:///c:/Fixhub/.env):
+
+### Core Application Configuration
 
 | Variable | Description | Default Value |
 | :--- | :--- | :--- |
+| `PORT` | Spring Boot Core Service Port | `8080` |
 | `DB_HOST` | PostgreSQL Host Address | `postgres` (or `localhost` for local run) |
 | `DB_PORT` | PostgreSQL Service Port | `5432` |
 | `DB_NAME` | Metadata Database Name | `fixit_metadata` |
 | `DB_USER` | PostgreSQL Username | `postgres` |
-| `DB_PASSWORD`| PostgreSQL Password | `postgrespassword` |
+| `DB_PASSWORD` | PostgreSQL Password | `postgrespassword` |
+| `DATABASE_URL` | PostgreSQL Connection String | `postgresql://postgres:postgrespassword@localhost:5432/fixit_metadata` |
 | `REDIS_HOST` | Redis Server Hostname | `redis` (or `localhost` for local run) |
 | `REDIS_PORT` | Redis Server Port | `6379` |
+| `REDIS_URL` | Redis Server Connection URL | `redis://localhost:6379` |
+
+### Integrations & Services Configuration
+
+| Variable | Description | Default Value |
+| :--- | :--- | :--- |
 | `ELASTICSEARCH_URIS` | Elasticsearch URI Connection String | `http://elasticsearch:9200` |
-| `JWT_SECRET` | Secret key for generating JSON Web Tokens | *(Base64 encoded 256-bit token)* |
-| `JWT_EXPIRATION_MS` | JWT validity duration | `86400000` (24 Hours) |
-| `GEMINI_API_KEY` | API key for Google Generative AI | *(Empty - optional fallback diagnostics run)* |
+| `CLICKHOUSE_URL` | ClickHouse Endpoint Hostname | `http://localhost:8123` |
+| `CLICKHOUSE_DB` | ClickHouse Database Name | `fixit_events` |
+| `JWT_SECRET` | Secret key for generating JSON Web Tokens | `dGhpcy1pcy1hLXNlY3JldC1rZXktZm9yLWZpeGl0LWh1Yi1iYWNrZW5kLXByb2R1Y3Rpb24tc3VpdGUtbXVzdC1iZS0yNTYtYml0cw==` |
+| `JWT_EXPIRATION_MS` | JWT validity duration (defaults to 24 Hours) | `86400000` |
+| `GEMINI_API_KEY` | API key for Google Generative AI | *(Empty)* |
 | `GEMINI_MODEL` | Gemini AI model version used for diagnostics | `gemini-1.5-flash` |
-| `PORT` | Spring Boot Core Service Port | `8080` |
+| `INGESTION_URL` | Ingest server target address for local routing | `http://localhost:5001` |
+| `FRONTEND_URL` | Origin path configuration for cross-origin security | `https://fixit-hub-api.vercel.app` |
+| `VITE_API_URL` | Environment Variable passed to Web UI | `http://localhost:5002/api` |
 
 ---
 
@@ -124,35 +159,41 @@ This brings up:
 
 If running components locally for development:
 
-#### **Step A: Datastores**
+#### **Step A: Launch Datastores**
 Launch PostgreSQL, Redis, ClickHouse, and Elasticsearch locally or run only the datastore containers via Docker:
 ```bash
 docker-compose up -d postgres redis elasticsearch
 ```
 
 #### **Step B: Ingestion Service (Go)**
-1. Navigate to `/apps/ingestion`
-2. Run using:
+1. Navigate to the ingestion directory:
+   ```bash
+   cd apps/ingestion
+   ```
+2. Build and run using:
    ```bash
    go run main.go
    ```
 
 #### **Step C: Event Worker & API (Node.js)**
-From the root directory, install dependencies and start the dev process:
+From the root directory, install all monorepo dependencies and start the dev process for the API/worker:
 ```bash
 npm run install:all
 npm run dev:api
 ```
 
 #### **Step D: Core Backend (Spring Boot)**
-1. Navigate to `/backend`
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
 2. Launch using Maven:
    ```bash
    mvn spring-boot:run
    ```
 
 #### **Step E: Frontend Dashboard (Vite + React)**
-From the root directory:
+From the root directory, start the Vite development server:
 ```bash
 npm run dev:web
 ```
@@ -185,10 +226,9 @@ The client dashboard will be available at `http://localhost:5173`.
 
 ## 🔄 CI/CD Automation Pipeline
 
-The repository includes a GitHub Actions workflow configured in [.github/workflows/ci-cd.yml](file:///c:/Universal%20Error%20&%20Bug%20Resolution%20Hub/.github/workflows/ci-cd.yml):
+The repository includes a GitHub Actions workflow configured in [.github/workflows/ci-cd.yml](file:///c:/Fixhub/.github/workflows/ci-cd.yml):
 
 - **Automated Testing**: Executes frontend unit tests with Vitest on every `git push`.
 - **Build Verification**: Validates TypeScript compilation and Maven packaging for backend code.
 - **Container Registry Sync**: Builds Docker images for frontend and backend and publishes them to GitHub Container Registry (`ghcr.io`).
 - **Security Scanning**: Scans container images for vulnerabilities using Trivy.
-
