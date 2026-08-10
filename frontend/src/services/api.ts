@@ -278,4 +278,27 @@ export const taxonomyService = {
   }
 };
 
+export const webhookService = {
+  list: async (projectId: string): Promise<any[]> => {
+    const response = await api.get(`/projects/${projectId}/webhooks`);
+    return response.data;
+  },
+  create: async (projectId: string, data: { name: string; url: string; type: string; active?: boolean }): Promise<any> => {
+    const response = await api.post(`/projects/${projectId}/webhooks`, data);
+    return response.data;
+  },
+  update: async (projectId: string, webhookId: string, data: { name: string; url: string; type: string; active?: boolean }): Promise<any> => {
+    const response = await api.put(`/projects/${projectId}/webhooks/${webhookId}`, data);
+    return response.data;
+  },
+  delete: async (projectId: string, webhookId: string): Promise<any> => {
+    const response = await api.delete(`/projects/${projectId}/webhooks/${webhookId}`);
+    return response.data;
+  },
+  test: async (projectId: string, webhookId: string): Promise<any> => {
+    const response = await api.post(`/projects/${projectId}/webhooks/${webhookId}/test`);
+    return response.data;
+  }
+};
+
 export default api;

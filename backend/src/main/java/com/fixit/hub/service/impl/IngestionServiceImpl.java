@@ -10,6 +10,7 @@ import com.fixit.hub.repository.jpa.IssueRepository;
 import com.fixit.hub.repository.jpa.ProjectRepository;
 import com.fixit.hub.service.IngestionService;
 import com.fixit.hub.service.ai.AIDiagnosticService;
+import com.fixit.hub.service.WebhookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -39,6 +40,7 @@ public class IngestionServiceImpl implements IngestionService {
     private final com.fixit.hub.repository.jpa.FrameworkRepository frameworkRepository;
     private final com.fixit.hub.repository.jpa.CategoryRepository categoryRepository;
     private final com.fixit.hub.repository.jpa.TagRepository tagRepository;
+    private final WebhookService webhookService;
 
     @Override
     @Transactional
@@ -81,6 +83,7 @@ public class IngestionServiceImpl implements IngestionService {
 
         Issue issue = issueRepository.findById(issueId).orElse(null);
         boolean isNewIssue = false;
+        boolean isReopened = false;
 
         if (issue == null) {
             isNewIssue = true;
@@ -112,6 +115,7 @@ public class IngestionServiceImpl implements IngestionService {
             // Re-open issue if it was marked as RESOLVED
             if (issue.getStatus() == IssueStatus.RESOLVED) {
                 issue.setStatus(IssueStatus.UNRESOLVED);
+                isReopened = true;
             }
         }
 
@@ -155,6 +159,11 @@ public class IngestionServiceImpl implements IngestionService {
                     request.exceptionMessage(),
                     request.stacktrace()
             );
+        }
+
+        // 6. Trigger Webhook Alerts if new issue or reopened
+        if (isNewIssue || isReopened) {
+            webhookService.triggerWebhooksForIssue(issue, isNewIssue);
         }
     }
 
