@@ -136,6 +136,29 @@ Define a `.env` file at the root of the workspace. A template is provided in [.e
 
 ---
 
+## 🔔 Real-Time Webhook Alert Channels (Slack & Discord)
+
+FixIt Hub natively supports real-time notifications to external workspace teams. Alert configurations are managed per-project and are dispatched asynchronously to protect the log ingestion loop from remote latency spikes.
+
+### Webhook API Endpoints
+All webhook endpoints require Bearer Token Authentication and validation of a valid Project ID.
+
+- **List Project Webhooks**: `GET /api/projects/{projectId}/webhooks`
+- **Register Webhook**: `POST /api/projects/{projectId}/webhooks`
+- **Update Webhook**: `PUT /api/projects/{projectId}/webhooks/{webhookId}`
+- **Delete Webhook**: `DELETE /api/projects/{projectId}/webhooks/{webhookId}`
+- **Send Test Connection Ping**: `POST /api/projects/{projectId}/webhooks/{webhookId}/test`
+
+### UI Dashboard Configuration
+Users can manage integrations directly from the **Settings Dashboard**:
+1. Select the active Project using the nav drop-down.
+2. Navigate to **Settings** -> **Real-Time Webhook Alert Channels**.
+3. Create channels (defining Name, Target type: `Slack` or `Discord`, and the Webhook URL).
+4. Click the **Play** button to dispatch a connection check alert verifying endpoint routing.
+5. Toggle the active status switch to temporarily enable or disable alert processing.
+
+---
+
 ## 🚀 Running the Application
 
 ### 🐳 1. Using Docker Compose (Recommended)
