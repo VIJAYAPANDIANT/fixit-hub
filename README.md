@@ -75,6 +75,177 @@ flowchart TD
 
 ---
 
+## 🗄️ Database Entity Relationship (ER) Diagram
+
+The transactional database (PostgreSQL 15+) maps entities related to users, organizations, projects, issue fingerprints, webhooks, and team triage feedback. Below is the relational structure of the database:
+
+```mermaid
+erDiagram
+    ORGANIZATIONS ||--o{ PROJECTS : "contains"
+    ORGANIZATIONS {
+        uuid id PK
+        varchar name
+        timestamp created_at
+    }
+
+    PROJECTS ||--o{ ERRORS : "tracks"
+    PROJECTS ||--o{ WEBHOOKS : "triggers"
+    PROJECTS {
+        uuid id PK
+        uuid org_id FK
+        varchar name
+        varchar dsn_key
+        timestamp created_at
+    }
+
+    WEBHOOKS {
+        uuid id PK
+        uuid project_id FK
+        varchar name
+        varchar url
+        varchar type
+        boolean active
+        timestamp created_at
+    }
+
+    USERS ||--o{ ERRORS : "assignee"
+    USERS ||--o{ SOLUTIONS : "authors"
+    USERS ||--o{ COMMENTS : "writes"
+    USERS ||--o{ BOOKMARKS : "creates"
+    USERS ||--o{ VOTES : "casts"
+    USERS ||--o{ SEARCH_HISTORY : "searches"
+    USERS ||--o{ NOTIFICATIONS : "receives"
+    USERS ||--o{ ADMIN_LOGS : "logs"
+    USERS ||--o{ REFRESH_TOKENS : "owns"
+    USERS {
+        uuid id PK
+        varchar email
+        varchar password_hash
+        varchar name
+        varchar role
+        varchar status
+        timestamp created_at
+    }
+
+    PROGRAMMING_LANGUAGES ||--o{ FRAMEWORKS : "extends"
+    PROGRAMMING_LANGUAGES ||--o{ ERRORS : "categorizes"
+    PROGRAMMING_LANGUAGES {
+        int id PK
+        varchar name
+        varchar slug
+        timestamp created_at
+    }
+
+    FRAMEWORKS ||--o{ ERRORS : "context"
+    FRAMEWORKS {
+        int id PK
+        int language_id FK
+        varchar name
+        varchar slug
+        timestamp created_at
+    }
+
+    CATEGORIES ||--o{ ERRORS : "classifies"
+    CATEGORIES {
+        int id PK
+        varchar name
+        varchar slug
+        text description
+        timestamp created_at
+    }
+
+    TAGS ||--o{ ERROR_TAGS : "describes"
+    TAGS {
+        int id PK
+        varchar name
+        varchar slug
+    }
+
+    ERROR_TAGS {
+        uuid error_id PK
+        int tag_id FK
+    }
+
+    ERRORS ||--o{ ERROR_TAGS : "tagged"
+    ERRORS ||--o{ SOLUTIONS : "resolves"
+    ERRORS ||--o{ AI_SOLUTIONS : "diagnoses"
+    ERRORS ||--o{ COMMENTS : "discusses"
+    ERRORS ||--o{ BOOKMARKS : "bookmarked"
+    ERRORS ||--o{ SCRAPED_FIXES : "scrapes"
+    ERRORS {
+        uuid id PK
+        uuid project_id FK
+        varchar fingerprint
+        text title
+        text message
+        text stacktrace
+        varchar status
+        varchar severity
+        varchar difficulty
+        int occurrences_count
+        timestamp first_seen
+        timestamp last_seen
+    }
+
+    SOLUTIONS ||--o{ VOTES : "receives"
+    SOLUTIONS {
+        uuid id PK
+        uuid error_id FK
+        uuid user_id FK
+        text content
+        int upvotes_count
+        int downvotes_count
+        boolean is_accepted
+        timestamp created_at
+    }
+
+    AI_SOLUTIONS {
+        uuid id PK
+        uuid error_id FK
+        varchar model_name
+        text summary
+        text root_cause
+        text fix_suggestion
+        numeric confidence_score
+        timestamp created_at
+    }
+
+    COMMENTS {
+        uuid id PK
+        uuid error_id FK
+        uuid user_id FK
+        text content
+        timestamp created_at
+    }
+
+    VOTES {
+        uuid id PK
+        uuid user_id FK
+        uuid solution_id FK
+        int vote_type
+        timestamp created_at
+    }
+
+    BOOKMARKS {
+        uuid id PK
+        uuid user_id FK
+        uuid error_id FK
+        timestamp created_at
+    }
+
+    SCRAPED_FIXES {
+        uuid id PK
+        uuid error_id FK
+        varchar source_name
+        varchar source_url
+        varchar title
+        text content
+        timestamp created_at
+    }
+```
+
+---
+
 ## 📂 Repository Layout
 
 This repository is organized as a monorepo containing multiple key workspaces and service layers:
