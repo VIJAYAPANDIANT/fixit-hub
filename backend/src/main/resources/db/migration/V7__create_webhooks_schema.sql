@@ -5,7 +5,7 @@
 
 CREATE TABLE webhooks (
     id UUID PRIMARY KEY,
-    project_id UUID REFERENCES projects(id) ON DELETE CASCADE NOT NULL,
+    project_id UUID NOT NULL,
     name VARCHAR(255) NOT NULL,
     url VARCHAR(500) NOT NULL,
     type VARCHAR(50) NOT NULL, -- SLACK, DISCORD
