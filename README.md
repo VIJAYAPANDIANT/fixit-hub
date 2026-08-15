@@ -244,6 +244,9 @@ erDiagram
     }
 ```
 
+> [!NOTE]
+> **Decoupled Database Schema Design**: Tables managed by the Java Spring Boot backend (like `errors` and `webhooks`) do not enforce database-level foreign key constraints (`REFERENCES projects(id)`) against the `projects` table. This keeps the backend decoupled from tables initialized dynamically by the Node.js API, and allows Flyway migrations and test suites (H2) to run successfully in localized test/CI environments.
+
 ---
 
 ## 📂 Repository Layout
@@ -346,6 +349,9 @@ This brings up:
 - **Elasticsearch** on `9200`
 - **Spring Boot Backend** on `8080` (API documentation accessible at `http://localhost:8080/swagger-ui.html`)
 - **React Frontend** on `80` (Dashboard accessible at `http://localhost`)
+
+> [!TIP]
+> **Monorepo Containerization Strategy**: In our monorepo setup, `package-lock.json` is located exclusively at the root directory level. Sub-workspaces (like `/frontend`) compile their Docker images using only `package.json` and install dependencies using `npm install --legacy-peer-deps` to ensure Docker compilation succeeds without localized lock files.
 
 ---
 
