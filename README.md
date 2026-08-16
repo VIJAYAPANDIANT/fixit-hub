@@ -18,6 +18,16 @@ An AI-powered, self-hosted, real-time error tracking and exception monitoring sy
 
 ---
 
+## 📖 Developer Documentation
+
+To help developers onboard and contribute to FixIt Hub, the following technical guides are available:
+- **[Developer Architecture Guide](file:///c:/Fixhub/docs/architecture.md)**: Details components topology and asynchronous queue processing.
+- **[Database Layout & Schemas Guide](file:///c:/Fixhub/docs/database.md)**: Covers Flyway migrations, database constraints, and analytical ClickHouse structures.
+- **[REST API Guide](file:///c:/Fixhub/docs/api-guide.md)**: Lists active endpoint paths, parameter schemas, and Slack/Discord payloads.
+- **[Local Development Setup Guide](file:///c:/Fixhub/docs/setup-guide.md)**: Complete guide for setting up credentials, databases, and microservices.
+
+---
+
 ## 🏗️ Architecture & Data Flow
 
 FixIt Hub implements two distinct data paths to achieve maximum throughput for log events while maintaining high responsiveness for dashboard queries:
