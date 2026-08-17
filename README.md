@@ -12,6 +12,17 @@ An AI-powered, self-hosted, real-time error tracking and exception monitoring sy
 
 ---
 
+## ✨ Key Features
+
+- **⚡ High-Throughput Log Ingestion**: Lightweight Go daemon recording raw telemetry data directly to ClickHouse (columnar analytical storage) at sub-millisecond speeds.
+- **🔍 Automated Deduplication**: Intelligent MD5 stacktrace fingerprinting that aggregates duplicate crash instances into unified, triageable issues.
+- **🤖 LLM-Powered AI Diagnostics**: Instant Google Gemini AI integration analyzing error message contexts, trace files, and environment variables to formulate root-cause explanations and drop-in code fixes.
+- **🔎 Elasticsearch Indexing**: Low-latency, full-text log search with advanced filtering capabilities (by language, severity, environment, and tags).
+- **🔔 Slack & Discord Alerts**: Asynchronous background webhook alerts that ping external team chats immediately when new or re-opened crashes are logged.
+- **📊 Interactive Developer Dashboard**: Sleek React 19 UI with visual trend graphs, theme toggles, comment threads, solution voting, bookmarks, and developer triage assignments.
+
+---
+
 ## 🌐 Live Deployments
 - **Frontend Dashboard**: [https://fixit-hub-api.vercel.app/](https://fixit-hub-api.vercel.app/)
 - **Backend API**: *(Deploying on Render soon)*
