@@ -28,7 +28,7 @@ export const Login: React.FC = () => {
         const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name, role })
+          body: JSON.stringify({ email, password, name, role })
         });
         if (!response.ok) {
           throw new Error("Registration failed. Account might already exist.");
@@ -106,23 +106,21 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
-          {!isRegister && (
-            <div>
-              <label htmlFor="password" className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">PASSWORD</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-dark-800 bg-white/50 dark:bg-dark-900/50 focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
-                  placeholder="••••••••"
-                />
-              </div>
+          <div>
+            <label htmlFor="password" className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">PASSWORD</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-dark-800 bg-white/50 dark:bg-dark-900/50 focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+                placeholder="••••••••"
+              />
             </div>
-          )}
+          </div>
 
           {isRegister && (
             <div>
