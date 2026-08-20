@@ -91,7 +91,7 @@ export const Login: React.FC = () => {
           )}
 
           <div>
-            <label htmlFor="email" className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">EMAIL ADDRESS</label>
+            <label htmlFor="email" className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">EMAIL ID</label>
             <div className="relative">
               <Mail className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
               <input
@@ -122,20 +122,7 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
-          {isRegister && (
-            <div>
-              <label htmlFor="reg-role" className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">ROLE</label>
-              <select
-                id="reg-role"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-dark-800 bg-white/50 dark:bg-dark-900/50 focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
-              >
-                <option value="DEVELOPER">DEVELOPER</option>
-                <option value="ADMIN">ADMIN</option>
-              </select>
-            </div>
-          )}
+
 
           <button
             type="submit"

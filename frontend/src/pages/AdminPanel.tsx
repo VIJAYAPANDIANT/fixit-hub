@@ -79,7 +79,7 @@ export const AdminPanel: React.FC = () => {
               />
             </div>
             <div>
-              <label htmlFor="reg-dev-email" className="text-xs font-bold text-slate-400 block mb-1">EMAIL ADDRESS</label>
+              <label htmlFor="reg-dev-email" className="text-xs font-bold text-slate-400 block mb-1">EMAIL ID</label>
               <input 
                 id="reg-dev-email"
                 type="email" 
