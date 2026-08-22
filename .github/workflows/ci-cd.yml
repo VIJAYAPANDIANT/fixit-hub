@@ -154,10 +154,13 @@ jobs:
   deploy:
     name: Deploy to Production
     needs: docker-build-push
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.PROD_SERVER_HOST != ''
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
+    env:
+      PROD_SERVER_HOST: ${{ secrets.PROD_SERVER_HOST }}
     steps:
       - name: Execute Remote SSH Commands to Deploy
+        if: env.PROD_SERVER_HOST != ''
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.PROD_SERVER_HOST }}
@@ -174,10 +177,12 @@ jobs:
     name: Notify Status
     needs: [lint-and-scan, test-and-build, docker-build-push, deploy]
     runs-on: ubuntu-latest
-    if: always() && secrets.SLACK_WEBHOOK != ''
+    if: always()
+    env:
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
     steps:
       - name: Slack Notification on Success
-        if: ${{ needs.deploy.result == 'success' || (needs.docker-build-push.result == 'success' && needs.deploy.result == 'skipped') }}
+        if: env.SLACK_WEBHOOK != '' && (needs.deploy.result == 'success' || (needs.docker-build-push.result == 'success' && needs.deploy.result == 'skipped'))
         uses: rtcamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
@@ -186,7 +191,7 @@ jobs:
           SLACK_COLOR: '#2eb886'
 
       - name: Slack Notification on Failure
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        if: env.SLACK_WEBHOOK != '' && (needs.lint-and-scan.result == 'failure' || needs.test-and-build.result == 'failure' || needs.docker-build-push.result == 'failure' || needs.deploy.result == 'failure' || needs.lint-and-scan.result == 'cancelled' || needs.test-and-build.result == 'cancelled' || needs.docker-build-push.result == 'cancelled' || needs.deploy.result == 'cancelled')
         uses: rtcamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
