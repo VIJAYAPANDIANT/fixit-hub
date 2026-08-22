@@ -72,17 +72,19 @@ describe('Login Page', () => {
 
     const nameInput = screen.getByPlaceholderText('John Doe');
     const emailInput = screen.getByPlaceholderText('developer@gmail.com');
+    const passwordInput = screen.getByPlaceholderText('••••••••');
     const submitButton = screen.getByRole('button', { name: /register/i });
 
     fireEvent.change(nameInput, { target: { value: 'John Doe' } });
     fireEvent.change(emailInput, { target: { value: 'john@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
     fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/auth/register', expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ email: 'john@example.com', name: 'John Doe', role: 'DEVELOPER' })
+        body: JSON.stringify({ email: 'john@example.com', password: 'password123', name: 'John Doe', role: 'DEVELOPER' })
       }));
     });
   });
