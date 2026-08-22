@@ -20,7 +20,7 @@ public class Comment {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "issue_id", nullable = false)
+    @JoinColumn(name = "error_id", nullable = false)
     private Issue issue;
 
     @ManyToOne(fetch = FetchType.LAZY)
