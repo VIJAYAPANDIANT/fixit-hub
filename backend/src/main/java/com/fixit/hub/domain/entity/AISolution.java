@@ -33,7 +33,7 @@ public class AISolution {
     @Column(name = "fix_suggestion", columnDefinition = "TEXT", nullable = false)
     private String fixSuggestion;
 
-    @Column(name = "confidence_score", nullable = false)
+    @Column(name = "confidence_score", nullable = false, columnDefinition = "NUMERIC(3,2)")
     private double confidenceScore;
 
     @Column(name = "title", columnDefinition = "TEXT")
