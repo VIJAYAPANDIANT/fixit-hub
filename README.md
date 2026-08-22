@@ -354,6 +354,30 @@ Users can manage integrations directly from the **Settings Dashboard**:
 
 ---
 
+## ☁️ Cloud Services & API Configuration Guides
+
+### 🐘 1. Provisioning Neon Serverless PostgreSQL
+FixIt Hub supports serverless PostgreSQL databases provided by **[Neon](https://neon.tech/)**:
+1. Log in to Neon and click **Create Project**. Name it `Fixhub` and select your target region.
+2. In the Neon Console, locate the **Connection String** dropdown box.
+3. Toggle the **Connection Pooling** switch active (uses Neon's transaction pooler).
+4. Copy the connection string (starts with `postgresql://`).
+5. Map the connection parameters in your local `.env` file:
+   - **`DATABASE_URL`**: `postgresql://neondb_owner:<pwd>@<host>/neondb?sslmode=require&channel_binding=require`
+   - **`SPRING_DATASOURCE_URL`**: `jdbc:postgresql://<host>/neondb?sslmode=require`
+
+---
+
+### 🤖 2. Generating Google Gemini API Keys
+The automated diagnostics worker relies on Google's LLM engine:
+1. Log in to **[Google AI Studio](https://aistudio.google.com/)**.
+2. Click on the **Get API key** button in the left navigation sidebar.
+3. Click **Create API key** (select a new Google Cloud project or bind to an existing one).
+4. Copy the generated API key (starts with `AIzaSy`).
+5. Paste it next to `GEMINI_API_KEY` in your `.env` file.
+
+---
+
 ## 🚀 Running the Application
 
 ### 🐳 1. Using Docker Compose (Recommended)
