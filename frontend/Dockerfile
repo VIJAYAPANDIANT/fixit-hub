@@ -3,6 +3,7 @@ FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 COPY frontend/package.json ./frontend/
+COPY apps/api/package.json ./apps/api/
 RUN npm ci --legacy-peer-deps
 COPY . .
 WORKDIR /app/frontend
