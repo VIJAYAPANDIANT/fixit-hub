@@ -9,7 +9,7 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
 import java.time.Instant;
 import java.util.Map;
 
-@Document(indexName = "event_logs")
+@Document(indexName = "event_logs", createIndex = false)
 @Getter
 @Setter
 @Builder

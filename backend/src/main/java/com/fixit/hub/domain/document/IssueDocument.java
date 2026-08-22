@@ -10,7 +10,7 @@ import org.springframework.data.elasticsearch.annotations.Setting;
 import java.time.Instant;
 import java.util.List;
 
-@Document(indexName = "issues")
+@Document(indexName = "issues", createIndex = false)
 @Setting(settingPath = "elasticsearch/settings.json")
 @Getter
 @Setter
