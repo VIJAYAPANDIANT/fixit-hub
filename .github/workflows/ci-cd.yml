@@ -173,6 +173,7 @@ jobs:
   notify:
     name: Notify Status
     needs: [lint-and-scan, test-and-build, docker-build-push, deploy]
+    runs-on: ubuntu-latest
     if: always() && secrets.SLACK_WEBHOOK != ''
     steps:
       - name: Slack Notification on Success
