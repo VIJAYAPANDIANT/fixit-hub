@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 import { Terminal, Lock, Mail, User as UserIcon, ArrowRight } from 'lucide-react';
 
 export const Login: React.FC = () => {
@@ -25,14 +26,7 @@ export const Login: React.FC = () => {
 
     try {
       if (isRegister) {
-        const response = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, name, role })
-        });
-        if (!response.ok) {
-          throw new Error("Registration failed. Account might already exist.");
-        }
+        await api.post('/auth/register', { email, password, name, role });
         setIsRegister(false);
         setErrorMsg("Registration successful! Please login with your password.");
       } else {
