@@ -10,7 +10,7 @@
 
 An AI-powered, self-hosted, real-time error tracking and exception monitoring system designed to help developers capture, diagnose, and resolve application bugs instantly. FixIt Hub combines high-performance log ingestion, automated issue deduplication, Elasticsearch-powered search, and Google Gemini AI diagnostics to provide instant root-cause analysis and actionable resolution steps.
 
-![FixIt Hub Developer Dashboard](docs/images/dashboard.png)
+![FixIt Hub Active Issues & Triage Dashboard](docs/images/dashboard.png)
 
 ---
 
