@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Override the dark variant to use class-based dark mode selector in Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-brand-50: #f5f3ff;
   --color-brand-100: #ede9fe;
