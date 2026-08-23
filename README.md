@@ -28,6 +28,15 @@ An AI-powered, self-hosted, real-time error tracking and exception monitoring sy
 - **Backend API (Spring Boot Core)**: [https://fixit-core-backend.onrender.com](https://fixit-core-backend.onrender.com)
 - **Node.js Ingestion Worker**: [https://fixit-node-worker.onrender.com](https://fixit-node-worker.onrender.com)
 
+### 🔑 Demo Credentials
+
+For testing and evaluating the live dashboard, use the following credentials:
+
+| Role | Email | Password |
+| --- | --- | --- |
+| **Global Admin** | `admin@fixit.hub` | `adminpassword` |
+| **Developer** | `vijayapandian112007@gmail.com` | `123456` |
+
 ---
 
 ## 📖 Developer Documentation
