@@ -223,6 +223,7 @@ public class AuthServiceImpl implements AuthService {
     private String createAndSaveRefreshToken(User user) {
         // Enforce 1-to-1 session refresh: delete previous refresh token for this user
         refreshTokenRepository.deleteByUser(user);
+        refreshTokenRepository.flush();
 
         String tokenStr = UUID.randomUUID().toString();
         RefreshToken refreshToken = RefreshToken.builder()
