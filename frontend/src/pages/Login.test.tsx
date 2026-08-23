@@ -11,6 +11,16 @@ vi.mock('../context/AuthContext', () => ({
   }),
 }));
 
+const { mockApiPost } = vi.hoisted(() => ({
+  mockApiPost: vi.fn(),
+}));
+
+vi.mock('../services/api', () => ({
+  api: {
+    post: mockApiPost,
+  },
+}));
+
 describe('Login Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -52,11 +62,7 @@ describe('Login Page', () => {
   });
 
   it('toggles to register mode and submits registration details', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ success: true }),
-    });
-    globalThis.fetch = mockFetch;
+    mockApiPost.mockResolvedValueOnce({ data: { success: true } });
 
     render(
       <MemoryRouter>
@@ -82,10 +88,12 @@ describe('Login Page', () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/auth/register', expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ email: 'john@example.com', password: 'password123', name: 'John Doe', role: 'DEVELOPER' })
-      }));
+      expect(mockApiPost).toHaveBeenCalledWith('/auth/register', {
+        email: 'john@example.com',
+        password: 'password123',
+        name: 'John Doe',
+        role: 'DEVELOPER'
+      });
     });
   });
 });
