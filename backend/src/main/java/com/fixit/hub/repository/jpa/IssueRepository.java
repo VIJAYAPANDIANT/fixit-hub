@@ -58,4 +58,19 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
             @Param("search") String search,
             Sort sort
     );
+
+    default List<Issue> findFilteredIssues(
+            UUID projectId,
+            IssueStatus status,
+            IssueSeverity severity,
+            IssueDifficulty difficulty,
+            String search,
+            Sort sort
+    ) {
+        if (search == null || search.trim().isEmpty()) {
+            return findFilteredIssuesWithoutSearch(projectId, status, severity, difficulty, sort);
+        } else {
+            return findFilteredIssuesWithSearch(projectId, status, severity, difficulty, search, sort);
+        }
+    }
 }
