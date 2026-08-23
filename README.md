@@ -477,3 +477,20 @@ The repository includes a GitHub Actions workflow configured in [.github/workflo
 - **Build Verification**: Validates TypeScript compilation and Maven packaging for backend code.
 - **Container Registry Sync**: Builds Docker images for frontend and backend and publishes them to GitHub Container Registry (`ghcr.io`).
 - **Security Scanning**: Scans container images for vulnerabilities using Trivy.
+
+---
+
+## 🛠️ Client SDK Integration (DSN Setup)
+
+To start tracking exceptions and bugs from your client applications in production, integrate the FixIt SDK and point the DSN target to your deployed Node.js Ingestion Worker on Render:
+
+```javascript
+import FixIt from 'fixit-sdk';
+
+FixIt.init({
+  // Streams log payloads directly to your live ingestion worker
+  dsn: "https://fixit-node-worker.onrender.com/api/v1/store"
+});
+```
+
+For more details, see the template in [client-example.js](file:///c:/Fixhub/client-example.js).
