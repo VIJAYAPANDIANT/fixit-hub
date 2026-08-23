@@ -29,9 +29,9 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
            "AND (:status IS NULL OR i.status = :status) " +
            "AND (:severity IS NULL OR i.severity = :severity) " +
            "AND (:difficulty IS NULL OR i.difficulty = :difficulty) " +
-           "AND (:search IS NULL OR LOWER(i.title) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(i.message) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(i.description) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "AND (CAST(:search AS string) IS NULL OR LOWER(i.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+           "OR LOWER(i.message) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+           "OR LOWER(i.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
     List<Issue> findFilteredIssues(
             @Param("projectId") UUID projectId,
             @Param("status") IssueStatus status,
