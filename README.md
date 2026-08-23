@@ -25,7 +25,8 @@ An AI-powered, self-hosted, real-time error tracking and exception monitoring sy
 
 ## 🌐 Live Deployments
 - **Frontend Dashboard**: [https://fixit-hub-api.vercel.app/](https://fixit-hub-api.vercel.app/)
-- **Backend API**: *(Deploying on Render soon)*
+- **Backend API (Spring Boot Core)**: [https://fixit-core-backend.onrender.com](https://fixit-core-backend.onrender.com)
+- **Node.js Ingestion Worker**: [https://fixit-node-worker.onrender.com](https://fixit-node-worker.onrender.com)
 
 ---
 
