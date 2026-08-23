@@ -208,10 +208,17 @@ public class IssueServiceImpl implements IssueService {
                 sortOrder = Sort.by(Sort.Direction.DESC, "lastSeen");
             }
 
-            return issueRepository.findFilteredIssues(projectId, status, severity, difficulty, search, sortOrder)
-                    .stream()
-                    .map(issueMapper::toResponse)
-                    .collect(Collectors.toList());
+            if (search == null || search.trim().isEmpty()) {
+                return issueRepository.findFilteredIssuesWithoutSearch(projectId, status, severity, difficulty, sortOrder)
+                        .stream()
+                        .map(issueMapper::toResponse)
+                        .collect(Collectors.toList());
+            } else {
+                return issueRepository.findFilteredIssuesWithSearch(projectId, status, severity, difficulty, search, sortOrder)
+                        .stream()
+                        .map(issueMapper::toResponse)
+                        .collect(Collectors.toList());
+            }
         }
     }
 

@@ -28,11 +28,29 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
            "WHERE i.project.id = :projectId " +
            "AND (:status IS NULL OR i.status = :status) " +
            "AND (:severity IS NULL OR i.severity = :severity) " +
+           "AND (:difficulty IS NULL OR i.difficulty = :difficulty)")
+    List<Issue> findFilteredIssuesWithoutSearch(
+            @Param("projectId") UUID projectId,
+            @Param("status") IssueStatus status,
+            @Param("severity") IssueSeverity severity,
+            @Param("difficulty") IssueDifficulty difficulty,
+            Sort sort
+    );
+
+    @Query("SELECT DISTINCT i FROM Issue i " +
+           "LEFT JOIN FETCH i.project " +
+           "LEFT JOIN FETCH i.language " +
+           "LEFT JOIN FETCH i.framework " +
+           "LEFT JOIN FETCH i.category " +
+           "LEFT JOIN FETCH i.assignedTo " +
+           "WHERE i.project.id = :projectId " +
+           "AND (:status IS NULL OR i.status = :status) " +
+           "AND (:severity IS NULL OR i.severity = :severity) " +
            "AND (:difficulty IS NULL OR i.difficulty = :difficulty) " +
-           "AND (CAST(:search AS string) IS NULL OR LOWER(i.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
-           "OR LOWER(i.message) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
-           "OR LOWER(i.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
-    List<Issue> findFilteredIssues(
+           "AND (LOWER(i.title) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(i.message) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(i.description) LIKE LOWER(CONCAT('%', :search, '%')))")
+    List<Issue> findFilteredIssuesWithSearch(
             @Param("projectId") UUID projectId,
             @Param("status") IssueStatus status,
             @Param("severity") IssueSeverity severity,
