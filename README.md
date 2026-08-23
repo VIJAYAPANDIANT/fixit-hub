@@ -12,6 +12,24 @@ An AI-powered, self-hosted, real-time error tracking and exception monitoring sy
 
 ![FixIt Hub Dashboard](docs/images/dashboard.png)
 
+## 📌 Table of Contents
+
+* [✨ Key Features](#-key-features)
+* [🌐 Live Deployments & Demo Credentials](#-live-deployments)
+* [📖 Developer Documentation](#-developer-documentation)
+* [🏗️ Architecture & Data Flow](#️-architecture--data-flow)
+* [🗄️ Database Entity Relationship (ER) Diagram](#️-database-entity-relationship-er-diagram)
+* [📂 Repository Layout](#-repository-layout)
+* [🛠️ Technology Stack](#️-technology-stack)
+* [⚙️ Environment Configuration](#️-environment-configuration)
+* [🔔 Real-Time Webhook Alert Channels (Slack & Discord)](#-real-time-webhook-alert-channels-slack--discord)
+* [☁️ Cloud Services & API Configuration Guides](#️-cloud-services--api-configuration-guides)
+* [🚀 Running the Application](#-running-the-application)
+* [🛡️ Security & Production Hardening](#️-security--production-hardening)
+* [📊 Performance & Scaling Architecture](#-performance--scaling-architecture)
+* [🔄 CI/CD Automation Pipeline](#-cicd-automation-pipeline)
+* [🛠️ Client SDK Integration (DSN Setup)](#️-client-sdk-integration-dsn-setup)
+
 ---
 
 ## ✨ Key Features
@@ -478,6 +496,42 @@ The client dashboard will be available at `http://localhost:5173`.
    - **`SPRING_DATASOURCE_USERNAME`**: `neondb_owner`
    - **`SPRING_DATASOURCE_PASSWORD`**: `your-neon-password`
 5. Click **Create Web Service**. Render will automatically build the Docker container and keep your Spring Boot service running continuously.
+
+---
+
+## 🛡️ Security & Production Hardening
+
+To ensure a secure deployment in production environments, implement the following best practices:
+
+*   **JWT Secret Key Rotation**: Avoid using the default `JWT_SECRET` in `.env`. Generate a secure 256-bit key using openssl:
+    ```bash
+    openssl rand -base64 32
+    ```
+    Configure this key in the environment variables of your hosting provider (e.g., Render, Vercel).
+*   **Database Credentials Isolation**: Never commit actual database credentials or connection strings to git. Use environment variable injection (`DB_PASSWORD`, `DATABASE_URL`) to pass secrets dynamically.
+*   **CORS Configuration Limits**: Limit permitted cross-origin requests to your designated frontend domain inside `SecurityConfig.java` rather than allowing wildcard origins (`*`).
+*   **Spring Security Filter Auditing**: Ensure default management endpoints `/actuator/**` are protected or disabled in production by overriding properties:
+    ```properties
+    management.endpoints.web.exposure.exclude=*
+    ```
+
+---
+
+## 📊 Performance & Scaling Architecture
+
+FixIt Hub is architected to scale linearly to handle high crash velocities and massive ingestion spikes:
+
+*   **Columnar Analytical Ingestion (ClickHouse)**: Raw exception logs are written to ClickHouse, allowing sub-second analytical aggregations across millions of rows without blocking transactional databases.
+*   **Redis Queue Buffering**: Go ingestion daemons publish event tasks directly to Redis memory queues. This decouples client logging latency from slow Gemini LLM diagnostic calls.
+*   **Hibernate Connection Pool Tuning**: Configure HikariCP parameters for your Spring Boot service to match database capacity limits. For instance, on serverless Neon Postgres, enable transaction connection pooling:
+    ```properties
+    spring.datasource.hikari.maximum-pool-size=10
+    spring.datasource.hikari.minimum-idle=2
+    ```
+*   **JVM Memory Allocation**: For memory-constrained hosting environments (such as Render's free tier), configure JVM garbage collection and heap boundaries:
+    ```bash
+    java -XX:+UseG1GC -XX:MaxRAMPercentage=75.0 -jar app.jar
+    ```
 
 ---
 
